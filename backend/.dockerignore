@@ -1,0 +1,33 @@
+# Build outputs
+target/
+*.jar
+*.war
+
+# Logs and temp files
+logs/
+*.log
+temp/
+uploads/
+
+# IDE configurations
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Version Control System
+.git/
+.gitignore
+.gitattributes
+
+# Maven Wrapper binaries (pom.xml and wrapper wrapper configs are copied, binaries are re-fetched or built)
+.mvn/wrapper/maven-wrapper.jar

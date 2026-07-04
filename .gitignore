@@ -1,0 +1,116 @@
+# =========================================================================
+# SMART KRISHI - PRODUCTION-GRADE GITIGNORE
+# =========================================================================
+
+# -------------------------------------------------------------------------
+# 1. Environment & Secrets Files (Strictly Ignored)
+# -------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Subdirectory env configurations
+**/frontend/.env*
+**/backend/.env*
+
+# Spring Boot Configuration Secrets & Local Settings
+**/application-local.yml
+**/application-dev.yml
+**/application-secrets.yml
+**/application-prod.yml
+**/application-local.properties
+**/application-dev.properties
+**/application-secrets.properties
+
+# Secrets, keys and credentials folders
+secrets/
+keys/
+credentials/
+certs/
+*.pem
+*.key
+*.p12
+*.jks
+
+# -------------------------------------------------------------------------
+# 2. Build & Target Artifacts
+# -------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+build/
+target/
+out/
+bin/
+obj/
+maven/
+
+# Maven build files
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.restore
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# -------------------------------------------------------------------------
+# 3. Log, Temp, and Backup Files
+# -------------------------------------------------------------------------
+logs/
+*.log
+*.tmp
+*.bak
+*.class
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -------------------------------------------------------------------------
+# 4. User Uploaded Files & Temp Folders
+# -------------------------------------------------------------------------
+backend/target/
+backend/uploads/*
+!backend/uploads/.gitkeep
+temp/
+tmp/
+
+# -------------------------------------------------------------------------
+# 5. IDE, Editors, and OS Cache Files
+# -------------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+.factorypath
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# -------------------------------------------------------------------------
+# 6. Docker configurations
+# -------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.local.yml
+
+# -------------------------------------------------------------------------
+# 7. Local backups & Scratch Files
+# -------------------------------------------------------------------------
+database/backups/
+scratch/

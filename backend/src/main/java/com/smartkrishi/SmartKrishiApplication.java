@@ -1,0 +1,73 @@
+package com.smartkrishi;
+
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@SpringBootApplication
+@EnableJpaAuditing
+@EnableScheduling
+public class SmartKrishiApplication {
+
+    public static void main(String[] args) {
+        loadDotEnv();
+        SpringApplication.run(SmartKrishiApplication.class, args);
+    }
+
+    private static void loadDotEnv() {
+        try {
+            java.io.File envFile = new java.io.File(".env");
+            if (!envFile.exists()) {
+                envFile = new java.io.File("../.env");
+            }
+            if (envFile.exists()) {
+                java.nio.file.Files.lines(envFile.toPath()).forEach(line -> {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
+                        int index = trimmed.indexOf('=');
+                        String key = trimmed.substring(0, index).trim();
+                        String value = trimmed.substring(index + 1).trim();
+                        // Remove surrounding quotes if present
+                        if (value.startsWith("\"") && value.endsWith("\"")) {
+                            value = value.substring(1, value.length() - 1);
+                        } else if (value.startsWith("'") && value.endsWith("'")) {
+                            value = value.substring(1, value.length() - 1);
+                        }
+                        if (System.getProperty(key) == null && System.getenv(key) == null) {
+                            System.setProperty(key, value);
+                        }
+                    }
+                });
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to load .env file: " + e.getMessage());
+        }
+    }
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Smart Krishi Agricultural Marketplace")
+                        .version("1.0.0")
+                        .description("Complete REST API for agricultural marketplace platform with multi-vendor support")
+                        .contact(new Contact()
+                                .name("Smart Krishi Team")
+                                .email("support@smartkrishi.com")))
+                .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
+                .components(new io.swagger.v3.oas.models.Components()
+                        .addSecuritySchemes("Bearer Authentication",
+                                new SecurityScheme()
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")
+                                        .description("Enter JWT token")));
+    }
+}

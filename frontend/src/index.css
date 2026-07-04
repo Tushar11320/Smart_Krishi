@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  
+  /* Brand Theme Colors (Direct overrides to propagate changes application-wide) */
+  --color-green-600: #388E3C;
+  --color-green-700: #2E7D32;
+  --color-green-800: #2b6b2f;
+  --color-green-900: #1e4d22;
+  --color-green-950: #143417;
+  
+  --color-brand-green-dark: #2E7D32;
+  --color-brand-green-mid: #388E3C;
+  --color-brand-green-light: #43A047;
+  
+  --color-earth-brown: #8B5A2B;
+  --color-wheat-gold: #F4C430;
+  --color-sky-blue: #0284C7;
+  --color-soft-cream: #FAF9F6;
+  --color-natural-white: #FFFFFF;
+  
+  /* Animations */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-grow: grow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fadeIn: fadeIn 0.4s ease-out forwards;
+  --animate-slideUp: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes grow {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Base enhancements for farmer accessibility */
+html {
+  font-family: 'Outfit', sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FAF9F6;
+  color: #1c2b1e;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Touch targets optimization */
+button, a, select, input {
+  min-height: 44px;
+}
