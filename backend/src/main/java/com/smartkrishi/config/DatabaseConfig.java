@@ -29,6 +29,9 @@ public class DatabaseConfig {
     @Primary
     public DataSource dataSource() {
         String dbUrl = System.getenv("DATABASE_URL");
+        if (dbUrl == null) {
+            dbUrl = System.getProperty("DATABASE_URL");
+        }
         if (dbUrl != null && (dbUrl.startsWith("mysql://") || dbUrl.startsWith("postgres://"))) {
             try {
                 URI dbUri = new URI(dbUrl);
