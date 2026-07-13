@@ -11,8 +11,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "carts", indexes = {
-        @Index(name = "idx_buyer_id", columnList = "buyer_id"),
-        @Index(name = "idx_created_at", columnList = "created_at")
+        @Index(name = "idx_carts_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_carts_created_at", columnList = "created_at")
 })
 @Data
 @NoArgsConstructor

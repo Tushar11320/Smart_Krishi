@@ -14,7 +14,7 @@ import java.util.Set;
 @Table(name = "users", indexes = {
         @Index(name = "idx_email", columnList = "email"),
         @Index(name = "idx_phone", columnList = "phone"),
-        @Index(name = "idx_status", columnList = "user_status")
+        @Index(name = "idx_users_status", columnList = "user_status")
 })
 @Data
 @NoArgsConstructor
@@ -35,6 +35,10 @@ public class User {
     @Column(nullable = false, unique = true, length = 20)
     @NotBlank(message = "Phone is required")
     private String phone;
+
+    public void setPhone(String phone) {
+        this.phone = phone != null ? phone.trim() : null;
+    }
 
     @Column(nullable = false, length = 255)
     @NotBlank(message = "Password is required")
@@ -75,15 +79,6 @@ public class User {
 
     @Column(name = "google_picture", length = 1000)
     private String googlePicture;
-
-    @Column(name = "otp_code")
-    private String otpCode;
-
-    @Column(name = "otp_expiry")
-    private LocalDateTime otpExpiry;
-
-    @Column(name = "otp_attempts")
-    private Integer otpAttempts = 0;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;

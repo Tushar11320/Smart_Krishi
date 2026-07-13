@@ -1620,7 +1620,6 @@ export default function MerchantDashboard({ sellerProfile: initialSellerProfile 
                   <p className="text-xs text-gray-400 font-bold mt-1">{sellerProfile.businessCategory} Firm</p>
                   <div className="border-t border-gray-100 my-4 pt-4 text-left space-y-2.5 text-xs text-gray-500 font-semibold">
                     <div className="flex justify-between"><span>PAN No:</span> <strong className="text-gray-700">{sellerProfile.panNumber}</strong></div>
-                    <div className="flex justify-between"><span>GST No:</span> <strong className="text-gray-700">{sellerProfile.gstNumber || "N/A"}</strong></div>
                     <div className="flex justify-between"><span>Status:</span> <strong className="text-green-700 uppercase">{sellerProfile.sellerStatus}</strong></div>
                   </div>
                   <button

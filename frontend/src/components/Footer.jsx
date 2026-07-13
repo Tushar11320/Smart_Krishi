@@ -31,7 +31,7 @@ export default function Footer() {
 
           <div className="flex items-center gap-3">
             <FaMobileAlt />
-            <span>+91 9669525146</span>
+            <span>+91 9669115169</span>
           </div>
 
           <div className="flex items-center gap-3">

@@ -284,16 +284,8 @@ export default function AdminVerificationConsole() {
                       <p className="font-bold text-gray-800">{selectedSeller.businessType || "N/A"}</p>
                     </div>
                     <div>
-                      <span className="text-gray-400 font-semibold">Registration No:</span>
-                      <p className="font-bold text-gray-800">{selectedSeller.businessRegistrationNumber || "N/A"}</p>
-                    </div>
-                    <div>
                       <span className="text-gray-400 font-semibold">PAN Number:</span>
                       <p className="font-bold text-gray-800">{selectedSeller.panNumber || "N/A"}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-gray-400 font-semibold">GST Number:</span>
-                      <p className="font-bold text-gray-800">{selectedSeller.gstNumber || "Not Provided (Optional)"}</p>
                     </div>
                     <div className="col-span-2">
                       <span className="text-gray-400 font-semibold">Shop Address:</span>
@@ -347,7 +339,7 @@ export default function AdminVerificationConsole() {
                   <FileText size={20} className="text-green-600" />
                   Uploaded KYC Documents
                 </h4>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Profile Photo */}
                   <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50 flex flex-col justify-between h-40">
                     <div>
@@ -397,26 +389,6 @@ export default function AdminVerificationConsole() {
                     {selectedSeller.aadhaarDocumentUrl ? (
                       <a
                         href={selectedSeller.aadhaarDocumentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-green-700 font-bold hover:underline"
-                      >
-                        <Eye size={14} /> View File <ExternalLink size={12} />
-                      </a>
-                    ) : (
-                      <span className="text-xs text-gray-400 font-medium animate-pulse text-red-500 font-bold">Document Missing</span>
-                    )}
-                  </div>
-
-                  {/* Business Certificate */}
-                  <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50 flex flex-col justify-between h-40">
-                    <div>
-                      <span className="text-xs text-gray-400 font-bold uppercase">Business Certificate</span>
-                      <h5 className="font-bold text-sm text-gray-700 mt-1">Firm Registration Proof</h5>
-                    </div>
-                    {selectedSeller.businessCertificateUrl ? (
-                      <a
-                        href={selectedSeller.businessCertificateUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-1.5 text-xs text-green-700 font-bold hover:underline"

@@ -951,15 +951,15 @@ export function ContactSupport() {
               <div className="flex flex-col space-y-1 bg-white/5 p-3 rounded-2xl border border-white/10">
                 <span className="text-[10px] text-green-400 font-extrabold uppercase tracking-wider">Support Line 2</span>
                 <div className="flex flex-col gap-2">
-                  <span className="font-mono font-bold text-sm text-white">9669525146</span>
+                  <span className="font-mono font-bold text-sm text-white">9669115169</span>
                   <div className="flex gap-2">
-                    <a href="tel:9669525146" title="Call Support" className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
+                    <a href="tel:9669115169" title="Call Support" className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
                       <Phone size={12} /> Call
                     </a>
-                    <a href="https://wa.me/919669525146" target="_blank" rel="noopener noreferrer" title="WhatsApp Message" className="flex-1 py-1.5 bg-green-600/30 hover:bg-green-600/50 text-green-300 rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
+                    <a href="https://wa.me/919669115169" target="_blank" rel="noopener noreferrer" title="WhatsApp Message" className="flex-1 py-1.5 bg-green-600/30 hover:bg-green-600/50 text-green-300 rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
                       <MessageSquare size={12} /> WhatsApp
                     </a>
-                    <a href="sms:9669525146" title="SMS Message" className="flex-1 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
+                    <a href="sms:9669115169" title="SMS Message" className="flex-1 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded-lg transition flex items-center justify-center gap-1 text-[10px] font-bold">
                       <Send size={12} /> SMS
                     </a>
                   </div>

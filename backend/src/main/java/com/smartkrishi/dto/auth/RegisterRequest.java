@@ -23,9 +23,13 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     private String email;
     
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number should be valid")
+    @Pattern(regexp = "^(?:\\+91)?[6-9]\\d{9}$", message = "Please enter a valid Indian phone number.")
     @NotBlank(message = "Phone is required")
     private String phone;
+
+    public void setPhone(String phone) {
+        this.phone = phone != null ? phone.trim() : null;
+    }
     
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password should be at least 8 characters")

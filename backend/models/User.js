@@ -22,6 +22,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "farmer",
     },
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    otpCode: {
+      type: String,
+    },
+
+    otpExpiry: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

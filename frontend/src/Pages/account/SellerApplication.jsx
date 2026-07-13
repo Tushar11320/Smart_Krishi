@@ -217,7 +217,7 @@ export default function SellerApplication() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-xs font-bold text-gray-500 mb-1 pl-1">PAN Number *</label>
                   <input
@@ -228,29 +228,6 @@ export default function SellerApplication() {
                     value={onboardingData.panNumber}
                     onChange={(e) => setOnboardingData({ ...onboardingData, panNumber: e.target.value.toUpperCase() })}
                     placeholder="e.g. ABCDE1234F"
-                    className="border border-gray-300 p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-mono"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-gray-500 mb-1 pl-1">Business Reg No. *</label>
-                  <input
-                    type="text"
-                    required
-                    value={onboardingData.businessRegistrationNumber}
-                    onChange={(e) => setOnboardingData({ ...onboardingData, businessRegistrationNumber: e.target.value })}
-                    placeholder="Registration Number"
-                    className="border border-gray-300 p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-gray-500 mb-1 pl-1">GST Number (Optional)</label>
-                  <input
-                    type="text"
-                    value={onboardingData.gstNumber}
-                    onChange={(e) => setOnboardingData({ ...onboardingData, gstNumber: e.target.value.toUpperCase() })}
-                    placeholder="e.g. 22AAAAA1111A1Z1"
                     className="border border-gray-300 p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-mono"
                   />
                 </div>
@@ -407,7 +384,7 @@ export default function SellerApplication() {
                 </h3>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-3 gap-6">
                 <div className="flex flex-col">
                   <label className="text-xs font-bold text-gray-500 mb-1.5 pl-1">Profile Photo *</label>
                   <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50 text-center flex flex-col justify-center items-center h-44 relative">
@@ -484,33 +461,6 @@ export default function SellerApplication() {
                       <>
                         <Upload className="text-green-600 mb-2" size={32} />
                         <span className="text-xs text-gray-500 font-medium">Click to upload Aadhaar card</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-gray-500 mb-1.5 pl-1">Business Registration Certificate *</label>
-                  <div className="border-2 border-dashed border-green-200 hover:bg-green-50/50 rounded-2xl p-6 text-center cursor-pointer transition relative h-44 flex flex-col justify-center items-center">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      required={!onboardingData.businessCertificateUrl}
-                      onChange={(e) => handleOnboardingFileUpload(e, "businessCertificateUrl")}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    {onboardingData.businessCertificateUrl ? (
-                      <div className="space-y-2">
-                        <CheckCircle className="text-green-600 mx-auto" size={32} />
-                        <span className="text-xs text-green-700 font-bold">Certificate Uploaded</span>
-                        <a href={onboardingData.businessCertificateUrl} target="_blank" rel="noreferrer" className="text-xs text-gray-500 flex items-center gap-1 justify-center underline z-10">
-                          View File <Eye size={12} />
-                        </a>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="text-green-600 mb-2" size={32} />
-                        <span className="text-xs text-gray-500 font-medium">Click to upload registration certificate</span>
                       </>
                     )}
                   </div>

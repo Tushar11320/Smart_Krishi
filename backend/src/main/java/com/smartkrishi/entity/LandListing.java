@@ -15,9 +15,9 @@ import java.util.Set;
 
 @Entity
 @Table(name = "land_listings", indexes = {
-        @Index(name = "idx_seller_id", columnList = "seller_id"),
-        @Index(name = "idx_status", columnList = "land_status"),
-        @Index(name = "idx_created_at", columnList = "created_at")
+        @Index(name = "idx_land_listings_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_land_listings_status", columnList = "land_status"),
+        @Index(name = "idx_land_listings_created_at", columnList = "created_at")
 })
 @Data
 @NoArgsConstructor

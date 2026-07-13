@@ -3,8 +3,15 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 
 const connectDB = require("./config/db");
+const { verifySmtpConnection, transporter } = require("./config/nodemailer");
 
 dotenv.config();
+
+// Environment validation
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined in the environment.");
+  process.exit(1);
+}
 
 connectDB();
 
@@ -14,6 +21,52 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/uploads", express.static("uploads"));
+
+// Diagnostic SMTP test endpoint (Requirement 10 & 11)
+app.post("/api/test-email", async (req, res) => {
+  const { email } = req.body;
+  
+  if (!email || email.trim() === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Email recipient address is required."
+    });
+  }
+
+  // Basic email pattern validate (Requirement 6)
+  if (!email.match(/^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/)) {
+    return res.status(400).json({
+      success: false,
+      message: "Please enter a valid email address."
+    });
+  }
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Smart Krishi - Node.js SMTP Diagnostics Test",
+    text: "This is a test email sent to verify Node.js SMTP transporter configuration."
+  };
+
+  try {
+    console.log(`[DIAGNOSTICS] Hitting diagnostics: sending test email to ${email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[DIAGNOSTICS] Diagnostics test email sent successfully. MessageID: ${info.messageId}`);
+    
+    res.json({
+      success: true,
+      message: "SMTP test email sent successfully to " + email,
+      response: info.response
+    });
+  } catch (error) {
+    console.error("[DIAGNOSTICS] SMTP diagnostics test connection failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "SMTP test connection failed: " + error.message,
+      error: error.stack
+    });
+  }
+});
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/crops", require("./routes/cropRoutes"));
@@ -30,6 +83,12 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server Running on Port ${PORT}`);
-});
+// Start server after verifying SMTP connection (Requirement 7)
+const startServer = async () => {
+  await verifySmtpConnection();
+  app.listen(PORT, () => {
+    console.log(`Server Running on Port ${PORT}`);
+  });
+};
+
+startServer();

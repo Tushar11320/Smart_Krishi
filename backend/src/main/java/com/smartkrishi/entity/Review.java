@@ -15,10 +15,10 @@ import java.time.LocalDateTime;
         @UniqueConstraint(name = "uk_review", columnNames = { "product_id", "buyer_id", "order_item_id" }),
         @UniqueConstraint(name = "uk_seller_buyer", columnNames = { "seller_id", "buyer_id" })
 }, indexes = {
-        @Index(name = "idx_product_id", columnList = "product_id"),
-        @Index(name = "idx_buyer_id", columnList = "buyer_id"),
-        @Index(name = "idx_seller_id", columnList = "seller_id"),
-        @Index(name = "idx_created_at", columnList = "created_at"),
+        @Index(name = "idx_reviews_product_id", columnList = "product_id"),
+        @Index(name = "idx_reviews_buyer_id", columnList = "buyer_id"),
+        @Index(name = "idx_reviews_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_reviews_created_at", columnList = "created_at"),
         @Index(name = "idx_reviews_product_approved", columnList = "product_id, is_approved, created_at DESC")
 })
 @Data

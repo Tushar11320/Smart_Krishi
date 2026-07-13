@@ -71,7 +71,7 @@ export default function ProfileSection() {
       const response = await api.put("/users/profile", {
         firstName,
         lastName,
-        phone,
+        phone: String(phone).trim(),
         profileImage
       });
 

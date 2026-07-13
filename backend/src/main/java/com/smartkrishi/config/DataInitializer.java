@@ -24,6 +24,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.hibernate.Session;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,6 +47,57 @@ public class DataInitializer {
     private final ProductInventoryRepository productInventoryRepository;
     private final FertilizerRepository fertilizerRepository;
 
+    private boolean isH2Database() {
+        try {
+            return entityManager.unwrap(Session.class).doReturningWork(connection -> {
+                String dbProduct = connection.getMetaData().getDatabaseProductName();
+                return dbProduct != null && dbProduct.toLowerCase().contains("h2");
+            });
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean tableExists(String tableName) {
+        try {
+            return entityManager.unwrap(Session.class).doReturningWork(connection -> {
+                DatabaseMetaData metaData = connection.getMetaData();
+                try (ResultSet rs = metaData.getTables(null, null, tableName, null)) {
+                    if (rs.next()) return true;
+                }
+                try (ResultSet rs = metaData.getTables(null, null, tableName.toUpperCase(), null)) {
+                    if (rs.next()) return true;
+                }
+                try (ResultSet rs = metaData.getTables(null, null, tableName.toLowerCase(), null)) {
+                    if (rs.next()) return true;
+                }
+                return false;
+            });
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean columnExists(String tableName, String columnName) {
+        try {
+            return entityManager.unwrap(Session.class).doReturningWork(connection -> {
+                DatabaseMetaData metaData = connection.getMetaData();
+                try (ResultSet rs = metaData.getColumns(null, null, tableName, columnName)) {
+                    if (rs.next()) return true;
+                }
+                try (ResultSet rs = metaData.getColumns(null, null, tableName.toUpperCase(), columnName.toUpperCase())) {
+                    if (rs.next()) return true;
+                }
+                try (ResultSet rs = metaData.getColumns(null, null, tableName.toLowerCase(), columnName.toLowerCase())) {
+                    if (rs.next()) return true;
+                }
+                return false;
+            });
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @Bean
     public CommandLineRunner initData() {
         return args -> {
@@ -51,159 +105,187 @@ public class DataInitializer {
             
             // Migrate legacy roles in the database if they exist
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_USER' WHERE role_type = 'BUYER'").executeUpdate();
-                    entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_SELLER' WHERE role_type = 'SELLER'").executeUpdate();
-                    entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_ADMIN' WHERE role_type = 'ADMIN'").executeUpdate();
-                    entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_SUPER_ADMIN' WHERE role_type = 'SUPER_ADMIN'").executeUpdate();
-                    return null;
-                });
-                log.info("Successfully migrated legacy roles in the database to ROLE_ prefixed ones.");
+                if (tableExists("roles") && columnExists("roles", "role_type")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_USER' WHERE CAST(role_type AS CHAR) = 'BUYER'").executeUpdate();
+                        entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_SELLER' WHERE CAST(role_type AS CHAR) = 'SELLER'").executeUpdate();
+                        entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_ADMIN' WHERE CAST(role_type AS CHAR) = 'ADMIN'").executeUpdate();
+                        entityManager.createNativeQuery("UPDATE roles SET role_type = 'ROLE_SUPER_ADMIN' WHERE CAST(role_type AS CHAR) = 'SUPER_ADMIN'").executeUpdate();
+                        return null;
+                    });
+                    log.info("Successfully migrated legacy roles in the database to ROLE_ prefixed ones.");
+                }
             } catch (Exception e) {
-                log.debug("Roles migration skipped or table doesn't exist yet: " + e.getMessage());
+                log.debug("Roles migration skipped: " + e.getMessage());
             }
 
             // Alter seller_status column to support 'APPROVED' instead of old 'VERIFIED'
             try {
-                transactionTemplate.execute(status -> {
-                    // 1. Update any existing VERIFIED status to APPROVED to prevent truncation during schema alter
-                    entityManager.createNativeQuery(
-                        "UPDATE seller_profiles SET seller_status = 'APPROVED' WHERE seller_status = 'VERIFIED'"
-                    ).executeUpdate();
-                    return null;
-                });
-                log.info("Successfully updated legacy 'VERIFIED' status to 'APPROVED' in seller_profiles.");
+                if (tableExists("seller_profiles") && columnExists("seller_profiles", "seller_status")) {
+                    transactionTemplate.execute(status -> {
+                        // 1. Update any existing VERIFIED status to APPROVED to prevent truncation during schema alter
+                        entityManager.createNativeQuery(
+                            "UPDATE seller_profiles SET seller_status = 'APPROVED' WHERE CAST(seller_status AS CHAR) = 'VERIFIED'"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Successfully updated legacy 'VERIFIED' status to 'APPROVED' in seller_profiles.");
+                }
             } catch (Exception e) {
-                log.debug("Legacy status update skipped or table doesn't exist yet: " + e.getMessage());
+                log.debug("Legacy status update skipped: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    // 2. Modify enum to include 'APPROVED'
-                    entityManager.createNativeQuery(
-                        "ALTER TABLE seller_profiles MODIFY COLUMN seller_status ENUM('PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED') DEFAULT 'PENDING'"
-                    ).executeUpdate();
-                    return null;
-                });
-                log.info("Database column seller_profiles.seller_status successfully updated to support APPROVED.");
+                if (!isH2Database() && tableExists("seller_profiles") && columnExists("seller_profiles", "seller_status")) {
+                    transactionTemplate.execute(status -> {
+                        // 2. Modify enum to include 'APPROVED'
+                        entityManager.createNativeQuery(
+                            "ALTER TABLE seller_profiles MODIFY COLUMN seller_status ENUM('PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED') DEFAULT 'PENDING'"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column seller_profiles.seller_status successfully updated to support APPROVED.");
+                }
             } catch (Exception e) {
                 log.warn("Database column update warning (already updated or non-MySQL): " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    // 3. Add crop marketplace fields
-                    entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN variety VARCHAR(255) NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column crops.variety successfully added.");
+                if (tableExists("crops") && !columnExists("crops", "variety")) {
+                    transactionTemplate.execute(status -> {
+                        // 3. Add crop marketplace fields
+                        entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN variety VARCHAR(255) NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column crops.variety successfully added.");
+                }
             } catch (Exception e) {
                 log.debug("Column crops.variety already exists or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN unit VARCHAR(50) NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column crops.unit successfully added.");
+                if (tableExists("crops") && !columnExists("crops", "unit")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN unit VARCHAR(50) NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column crops.unit successfully added.");
+                }
             } catch (Exception e) {
                 log.debug("Column crops.unit already exists or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN harvest_date DATE NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column crops.harvest_date successfully added.");
+                if (tableExists("crops") && !columnExists("crops", "harvest_date")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN harvest_date DATE NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column crops.harvest_date successfully added.");
+                }
             } catch (Exception e) {
                 log.debug("Column crops.harvest_date already exists or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN location VARCHAR(255) NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column crops.location successfully added.");
+                if (tableExists("crops") && !columnExists("crops", "location")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE crops ADD COLUMN location VARCHAR(255) NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column crops.location successfully added.");
+                }
             } catch (Exception e) {
                 log.debug("Column crops.location already exists or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE categories MODIFY COLUMN category_slug VARCHAR(255) NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column categories.category_slug successfully made nullable.");
+                if (!isH2Database() && tableExists("categories") && columnExists("categories", "category_slug")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE categories MODIFY COLUMN category_slug VARCHAR(255) NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column categories.category_slug successfully made nullable.");
+                }
             } catch (Exception e) {
                 log.debug("Column categories.category_slug already nullable or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE products MODIFY COLUMN subcategory_id BIGINT NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column products.subcategory_id successfully made nullable.");
+                if (!isH2Database() && tableExists("products") && columnExists("products", "subcategory_id")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE products MODIFY COLUMN subcategory_id BIGINT NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column products.subcategory_id successfully made nullable.");
+                }
             } catch (Exception e) {
                 log.debug("Column products.subcategory_id already nullable or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE fertilizers MODIFY COLUMN fertilizer_type VARCHAR(100) NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column fertilizers.fertilizer_type successfully made nullable.");
+                if (!isH2Database() && tableExists("fertilizers") && columnExists("fertilizers", "fertilizer_type")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE fertilizers MODIFY COLUMN fertilizer_type VARCHAR(100) NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column fertilizers.fertilizer_type successfully made nullable.");
+                }
             } catch (Exception e) {
                 log.debug("Column fertilizers.fertilizer_type already nullable or error: " + e.getMessage());
             }
 
             // Fix cart_items: user_id is not mapped by JPA CartItem entity (resolved via cart_id -> carts.buyer_id)
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE cart_items MODIFY COLUMN user_id BIGINT NULL").executeUpdate();
-                    return null;
-                });
-                log.info("Database column cart_items.user_id successfully made nullable (not mapped by JPA).");
+                if (!isH2Database() && tableExists("cart_items") && columnExists("cart_items", "user_id")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE cart_items MODIFY COLUMN user_id BIGINT NULL").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column cart_items.user_id successfully made nullable (not mapped by JPA).");
+                }
             } catch (Exception e) {
                 log.debug("Column cart_items.user_id already nullable or error: " + e.getMessage());
             }
 
             // Fix cart_items: save_for_later needs a default value for JPA inserts
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery("ALTER TABLE cart_items ALTER COLUMN save_for_later SET DEFAULT 0").executeUpdate();
-                    return null;
-                });
-                log.info("Database column cart_items.save_for_later default set to 0.");
+                if (!isH2Database() && tableExists("cart_items") && columnExists("cart_items", "save_for_later")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery("ALTER TABLE cart_items ALTER COLUMN save_for_later SET DEFAULT 0").executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column cart_items.save_for_later default set to 0.");
+                }
             } catch (Exception e) {
                 log.debug("Column cart_items.save_for_later default already set or error: " + e.getMessage());
             }
 
             // Fix carts: set datetime defaults so @CreationTimestamp/@UpdateTimestamp work
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery(
-                        "ALTER TABLE carts MODIFY COLUMN created_at DATETIME(6) NOT NULL DEFAULT NOW(6)"
-                    ).executeUpdate();
-                    return null;
-                });
-                log.info("Database column carts.created_at default set to NOW(6).");
+                if (!isH2Database() && tableExists("carts") && columnExists("carts", "created_at")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery(
+                            "ALTER TABLE carts MODIFY COLUMN created_at DATETIME(6) NOT NULL DEFAULT NOW(6)"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column carts.created_at default set to NOW(6).");
+                }
             } catch (Exception e) {
                 log.debug("Column carts.created_at default already set or error: " + e.getMessage());
             }
 
             try {
-                transactionTemplate.execute(status -> {
-                    entityManager.createNativeQuery(
-                        "ALTER TABLE carts MODIFY COLUMN updated_at DATETIME(6) NOT NULL DEFAULT NOW(6) ON UPDATE NOW(6)"
-                    ).executeUpdate();
-                    return null;
-                });
-                log.info("Database column carts.updated_at default set to NOW(6) with ON UPDATE.");
+                if (!isH2Database() && tableExists("carts") && columnExists("carts", "updated_at")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery(
+                            "ALTER TABLE carts MODIFY COLUMN updated_at DATETIME(6) NOT NULL DEFAULT NOW(6) ON UPDATE NOW(6)"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column carts.updated_at default set to NOW(6) with ON UPDATE.");
+                }
             } catch (Exception e) {
                 log.debug("Column carts.updated_at default already set or error: " + e.getMessage());
             }

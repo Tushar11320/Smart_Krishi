@@ -130,7 +130,7 @@ export default function NotFound() {
 
               Contact Support
               Mobile: +91 6262782714
-                       +91 9669525146
+                       +91 9669115169
                        
 
             </button>

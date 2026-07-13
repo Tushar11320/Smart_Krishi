@@ -15,10 +15,10 @@ import java.util.Set;
 
 @Entity
 @Table(name = "products", indexes = {
-        @Index(name = "idx_seller_id", columnList = "seller_id"),
-        @Index(name = "idx_category_id", columnList = "category_id"),
-        @Index(name = "idx_product_status", columnList = "product_status"),
-        @Index(name = "idx_created_at", columnList = "created_at"),
+        @Index(name = "idx_products_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_products_category_id", columnList = "category_id"),
+        @Index(name = "idx_products_status", columnList = "product_status"),
+        @Index(name = "idx_products_created_at", columnList = "created_at"),
         @Index(name = "idx_products_cat_status", columnList = "category_id, product_status, deleted_at"),
         @Index(name = "idx_products_seller_deleted", columnList = "seller_id, deleted_at"),
         @Index(name = "idx_products_status_created", columnList = "product_status, created_at DESC")

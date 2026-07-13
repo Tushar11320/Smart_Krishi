@@ -2,6 +2,7 @@ package com.smartkrishi.service.auth;
 
 import com.smartkrishi.dto.auth.*;
 import com.smartkrishi.entity.BuyerProfile;
+import com.smartkrishi.entity.SellerProfile;
 import com.smartkrishi.entity.Role;
 import com.smartkrishi.entity.User;
 import com.smartkrishi.exception.BadRequestException;
@@ -111,7 +112,7 @@ public class AuthServiceImplTest {
         when(buyerProfileRepository.save(any(BuyerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-pwd");
         
-        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(10L), anyList())).thenReturn("jwt-access-token");
+        when(tokenProvider.generateToken(any(Authentication.class))).thenReturn("jwt-access-token");
         when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token");
         when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
 
@@ -157,7 +158,7 @@ public class AuthServiceImplTest {
         when(buyerProfileRepository.save(any(BuyerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-pwd-2");
         
-        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(11L), anyList())).thenReturn("jwt-access-token-2");
+        when(tokenProvider.generateToken(any(Authentication.class))).thenReturn("jwt-access-token-2");
         when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token-2");
         when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
 
@@ -242,7 +243,100 @@ public class AuthServiceImplTest {
         assertEquals("Alice", response.getFirstName());
         assertEquals("Smith", response.getLastName());
         assertEquals("newlocal@smartkrishi.com", response.getEmail());
+        assertEquals("ACTIVE", response.getUserStatus());
+        assertTrue(response.getEmailVerified());
+    }
+
+    @Test
+    public void testGoogleLogin_WithNameSplitting_Success() {
+        GoogleLoginRequest request = new GoogleLoginRequest();
+        request.setIdToken("valid-token-splitting");
+        request.setUserType("BUYER");
+
+        GoogleTokenPayload payload = new GoogleTokenPayload();
+        payload.setEmail("jane.doe.split@smartkrishi.com");
+        payload.setSub("google-sub-abcde");
+        payload.setAud("YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com");
+        payload.setName("Jane Doe");
+        payload.setGivenName(null);
+        payload.setFamilyName(null);
+        payload.setPicture("http://example.com/pic-split.jpg");
+
+        when(userRepository.findByEmail(payload.getEmail())).thenReturn(Optional.empty());
+        when(roleRepository.findByRoleType(Role.RoleType.ROLE_USER)).thenReturn(Optional.of(userRole));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId(12L);
+            return saved;
+        });
+        when(buyerProfileRepository.save(any(BuyerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-pwd-3");
         
-        verify(emailService).sendEmail(eq("newlocal@smartkrishi.com"), anyString(), anyString());
+        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(12L), anyList())).thenReturn("jwt-access-token-3");
+        when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token-3");
+        when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
+
+        when(restTemplate.getForObject(contains("valid-token-splitting"), eq(GoogleTokenPayload.class))).thenReturn(payload);
+
+        JwtResponse response = authService.googleLogin(request);
+
+        assertNotNull(response);
+        assertEquals("Jane", response.getUser().getFirstName());
+        assertEquals("Doe", response.getUser().getLastName());
+        
+        verify(userRepository).save(argThat(user -> 
+            "Jane".equals(user.getFirstName()) && 
+            "Doe".equals(user.getLastName())
+        ));
+    }
+
+    @Test
+    public void testGoogleLogin_ExistingUserLink_Success() {
+        GoogleLoginRequest request = new GoogleLoginRequest();
+        request.setIdToken("valid-token-link");
+        request.setUserType("SELLER");
+
+        GoogleTokenPayload payload = new GoogleTokenPayload();
+        payload.setEmail("existing@smartkrishi.com");
+        payload.setSub("google-sub-link");
+        payload.setAud("YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com");
+        payload.setName("Existing User");
+        payload.setGivenName("Existing");
+        payload.setFamilyName("User");
+
+        User existingUser = new User();
+        existingUser.setId(40L);
+        existingUser.setEmail("existing@smartkrishi.com");
+        existingUser.setFirstName("OldFirst");
+        existingUser.setLastName("OldLast");
+        existingUser.setUserStatus(User.UserStatus.ACTIVE);
+        existingUser.setEmailVerified(true);
+        existingUser.setRoles(new HashSet<>(Collections.singletonList(userRole)));
+
+        Role sellerRole = new Role();
+        sellerRole.setId(2L);
+        sellerRole.setRoleType(Role.RoleType.ROLE_SELLER);
+
+        when(userRepository.findByEmail(payload.getEmail())).thenReturn(Optional.of(existingUser));
+        when(roleRepository.findByRoleType(Role.RoleType.ROLE_SELLER)).thenReturn(Optional.of(sellerRole));
+        when(roleRepository.findByRoleType(Role.RoleType.ROLE_USER)).thenReturn(Optional.of(userRole));
+        when(sellerProfileRepository.findByUserId(40L)).thenReturn(Optional.empty());
+        when(sellerProfileRepository.save(any(SellerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(40L), anyList())).thenReturn("jwt-access-token-linked");
+        when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token-linked");
+        when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
+
+        when(restTemplate.getForObject(contains("valid-token-link"), eq(GoogleTokenPayload.class))).thenReturn(payload);
+
+        JwtResponse response = authService.googleLogin(request);
+
+        assertNotNull(response);
+        assertEquals("OldFirst", response.getUser().getFirstName());
+        assertEquals("OldLast", response.getUser().getLastName());
+        assertTrue(response.getUser().getRoles().contains("ROLE_SELLER"));
+        
+        verify(sellerProfileRepository).save(any(SellerProfile.class));
     }
 }

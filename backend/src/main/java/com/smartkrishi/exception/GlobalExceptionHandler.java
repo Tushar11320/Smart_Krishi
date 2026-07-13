@@ -53,21 +53,69 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
+    public ResponseEntity<?> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, WebRequest request) {
         log.warn("Validation failed for request");
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
+        boolean hasPhoneError = false;
+        
+        for (org.springframework.validation.ObjectError error : ex.getBindingResult().getAllErrors()) {
+            String fieldName = error instanceof FieldError ? ((FieldError) error).getField() : error.getObjectName();
             String errorMessage = error.getDefaultMessage();
             fieldErrors.put(fieldName, errorMessage);
-        });
+            if ("phone".equals(fieldName) || "Please enter a valid Indian phone number.".equals(errorMessage)) {
+                hasPhoneError = true;
+            }
+        }
+
+        if (hasPhoneError) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("success", false);
+            body.put("message", "Please enter a valid Indian phone number.");
+            return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+        }
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Validation Failed")
                 .message("Invalid input parameters")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .fieldErrors(fieldErrors)
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<?> handleConstraintViolation(
+            jakarta.validation.ConstraintViolationException ex, WebRequest request) {
+        log.warn("Constraint violation: {}", ex.getMessage());
+        Map<String, String> fieldErrors = new java.util.HashMap<>();
+        boolean hasPhoneError = false;
+        
+        for (jakarta.validation.ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            String propertyPath = violation.getPropertyPath().toString();
+            String field = propertyPath.substring(propertyPath.lastIndexOf('.') + 1);
+            String errorMessage = violation.getMessage();
+            fieldErrors.put(field, errorMessage);
+            if ("phone".equals(field) || "Please enter a valid Indian phone number.".equals(errorMessage)) {
+                hasPhoneError = true;
+            }
+        }
+
+        if (hasPhoneError) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("success", false);
+            body.put("message", "Please enter a valid Indian phone number.");
+            return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+        }
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Failed")
+                .message("Constraint violations detected")
                 .path(request.getDescription(false).replace("uri=", ""))
                 .fieldErrors(fieldErrors)
                 .build();

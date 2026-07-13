@@ -6,9 +6,9 @@ spring:
   
   # Database Configuration
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/smart_krishi?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/defaultdb}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:NewPassword@123}
+    password: ${DB_PASSWORD:}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -66,8 +66,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:your-email@gmail.com}
-    password: ${MAIL_PASSWORD:your-password}
+    username: ${MAIL_USERNAME:tusharbarskar8@gmail.com}
+    password: ${MAIL_PASSWORD:68A0EEC085847BB52E485ABD5CABFE231D50}
     properties:
       mail:
         smtp:
@@ -78,7 +78,7 @@ spring:
 
 # Server Configuration
 server:
-  port: 8080
+  port: ${SPRING_BOOT_PORT:${PORT:8080}}
   error:
     include-message: always
     include-binding-errors: always
@@ -117,9 +117,9 @@ management:
 
 # Cloudinary Configuration
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:cloud_name}
-  api-key: ${CLOUDINARY_API_KEY:api_key}
-  api-secret: ${CLOUDINARY_API_SECRET:api_secret}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:yl7gvzt}
+  api-key: ${CLOUDINARY_API_KEY:723828689573913} 
+  api-secret: ${CLOUDINARY_API_SECRET:Onda8ZIqBRxJixCgC2cCYdmCvUA}
 
 # Razorpay Configuration
 razorpay:
@@ -130,7 +130,7 @@ razorpay:
 
 # OpenWeather Configuration
 openweather:
-  api-key: ${OPENWEATHER_API_KEY:api_key}
+  api-key: ${OPENWEATHER_API_KEY:}
   base-url: https://api.openweathermap.org/data/2.5
 
 # Google Maps Configuration
