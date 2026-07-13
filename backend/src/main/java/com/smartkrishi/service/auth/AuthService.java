@@ -15,4 +15,8 @@ public interface AuthService {
     UserResponse getCurrentUser();
 
     JwtResponse googleLogin(GoogleLoginRequest googleLoginRequest);
+
+    UserResponse verifyOtp(VerifyOtpRequest verifyOtpRequest);
+
+    void resendOtp(ResendOtpRequest resendOtpRequest);
 }

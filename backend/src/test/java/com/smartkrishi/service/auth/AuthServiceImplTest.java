@@ -112,7 +112,7 @@ public class AuthServiceImplTest {
         when(buyerProfileRepository.save(any(BuyerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-pwd");
         
-        when(tokenProvider.generateToken(any(Authentication.class))).thenReturn("jwt-access-token");
+        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(10L), anyList())).thenReturn("jwt-access-token");
         when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token");
         when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
 
@@ -158,7 +158,7 @@ public class AuthServiceImplTest {
         when(buyerProfileRepository.save(any(BuyerProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-random-pwd-2");
         
-        when(tokenProvider.generateToken(any(Authentication.class))).thenReturn("jwt-access-token-2");
+        when(tokenProvider.generateTokenFromEmail(eq(payload.getEmail()), eq(11L), anyList())).thenReturn("jwt-access-token-2");
         when(tokenProvider.generateRefreshToken(eq(payload.getEmail()))).thenReturn("jwt-refresh-token-2");
         when(tokenProvider.getExpirationTime()).thenReturn(3600000L);
 
@@ -243,8 +243,10 @@ public class AuthServiceImplTest {
         assertEquals("Alice", response.getFirstName());
         assertEquals("Smith", response.getLastName());
         assertEquals("newlocal@smartkrishi.com", response.getEmail());
-        assertEquals("ACTIVE", response.getUserStatus());
-        assertTrue(response.getEmailVerified());
+        assertEquals("INACTIVE", response.getUserStatus());
+        assertFalse(response.getEmailVerified());
+        
+        verify(emailService).sendEmail(eq("newlocal@smartkrishi.com"), anyString(), anyString());
     }
 
     @Test
@@ -338,5 +340,75 @@ public class AuthServiceImplTest {
         assertTrue(response.getUser().getRoles().contains("ROLE_SELLER"));
         
         verify(sellerProfileRepository).save(any(SellerProfile.class));
+    }
+
+    @Test
+    public void testVerifyOtp_Success() {
+        VerifyOtpRequest request = new VerifyOtpRequest();
+        request.setEmail("test@smartkrishi.com");
+        request.setOtpCode("123456");
+
+        User user = new User();
+        user.setId(50L);
+        user.setEmail("test@smartkrishi.com");
+        user.setUserStatus(User.UserStatus.INACTIVE);
+        user.setEmailVerified(false);
+        user.setOtpCode("123456");
+        user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(5));
+        user.setOtpAttempts(0);
+
+        when(userRepository.findByEmail("test@smartkrishi.com")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserResponse response = authService.verifyOtp(request);
+
+        assertNotNull(response);
+        assertEquals("ACTIVE", response.getUserStatus());
+        assertTrue(response.getEmailVerified());
+        assertNull(user.getOtpCode());
+    }
+
+    @Test
+    public void testVerifyOtp_WrongOtp() {
+        VerifyOtpRequest request = new VerifyOtpRequest();
+        request.setEmail("test@smartkrishi.com");
+        request.setOtpCode("wrong");
+
+        User user = new User();
+        user.setId(50L);
+        user.setEmail("test@smartkrishi.com");
+        user.setUserStatus(User.UserStatus.INACTIVE);
+        user.setEmailVerified(false);
+        user.setOtpCode("123456");
+        user.setOtpExpiry(java.time.LocalDateTime.now().plusMinutes(5));
+        user.setOtpAttempts(0);
+
+        when(userRepository.findByEmail("test@smartkrishi.com")).thenReturn(Optional.of(user));
+
+        assertThrows(BadRequestException.class, () -> authService.verifyOtp(request));
+        assertEquals(1, user.getOtpAttempts());
+    }
+
+    @Test
+    public void testResendOtp_Success() {
+        ResendOtpRequest request = new ResendOtpRequest();
+        request.setEmail("test@smartkrishi.com");
+
+        User user = new User();
+        user.setId(50L);
+        user.setEmail("test@smartkrishi.com");
+        user.setUserStatus(User.UserStatus.INACTIVE);
+        user.setEmailVerified(false);
+        user.setOtpCode("111111");
+        user.setOtpExpiry(java.time.LocalDateTime.now().minusMinutes(5)); // expired, so cooldown is over
+
+        when(userRepository.findByEmail("test@smartkrishi.com")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        authService.resendOtp(request);
+
+        assertNotNull(user.getOtpCode());
+        assertNotEquals("111111", user.getOtpCode());
+        verify(emailService).sendEmail(eq("test@smartkrishi.com"), anyString(), anyString());
     }
 }
