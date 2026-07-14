@@ -50,11 +50,6 @@ public class SmartKrishiApplication {
                             value = value.substring(1, value.length() - 1);
                         }
                         
-                        // Ignore offline Aiven cloud database configurations
-                        if (value.contains("aivencloud.com")) {
-                            System.out.println("[DOTENV] Ignoring offline Aiven cloud database setting: " + key);
-                            return;
-                        }
 
                         if (System.getProperty(key) == null && System.getenv(key) == null) {
                             System.setProperty(key, value);
