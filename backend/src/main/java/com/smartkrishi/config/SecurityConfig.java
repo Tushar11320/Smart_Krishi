@@ -53,6 +53,7 @@ public class SecurityConfig {
                         // Permit all OPTIONS requests (CORS preflight)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
+                        .requestMatchers("/").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/test-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/images/upload").permitAll()
