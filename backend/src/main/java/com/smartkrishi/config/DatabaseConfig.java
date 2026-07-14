@@ -2,9 +2,12 @@ package com.smartkrishi.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.net.URI;
@@ -12,6 +15,8 @@ import java.net.URISyntaxException;
 
 @Configuration
 public class DatabaseConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
 
     @Value("${spring.datasource.url}")
     private String defaultUrl;
@@ -22,70 +27,109 @@ public class DatabaseConfig {
     @Value("${spring.datasource.password:}")
     private String defaultPassword;
 
-    @Value("${spring.profiles.active:local}")
-    private String activeProfile;
-
     @Value("${spring.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}")
     private String defaultDriver;
+
+    @Value("${spring.profiles.active:local}")
+    private String activeProfile;
 
     @Bean
     @Primary
     public DataSource dataSource() {
-        String dbUrl = null;
-        if (!"local".equals(activeProfile)) {
-            dbUrl = System.getenv("DATABASE_URL");
-            if (dbUrl == null) {
-                dbUrl = System.getProperty("DATABASE_URL");
-            }
+        log.info("Initializing DataSource. Active profile: {}", activeProfile);
+        
+        String dbUrl = defaultUrl;
+        String username = defaultUsername;
+        String password = defaultPassword;
+        String driverClassName = defaultDriver;
+
+        // If local profile is active, we can still allow overrides from DATABASE_URL if explicitly provided
+        String envDbUrl = System.getenv("DATABASE_URL");
+        if (envDbUrl == null) {
+            envDbUrl = System.getProperty("DATABASE_URL");
         }
-        if (dbUrl != null && (dbUrl.startsWith("mysql://") || dbUrl.startsWith("postgres://"))) {
+
+        if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
+            dbUrl = envDbUrl;
+            log.info("DATABASE_URL env override found: {}", maskUrl(dbUrl));
+        }
+
+        if (dbUrl != null && (dbUrl.startsWith("mysql://") || dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"))) {
             try {
                 URI dbUri = new URI(dbUrl);
+                String scheme = dbUri.getScheme();
                 String userInfo = dbUri.getUserInfo();
-                String username = "";
-                String password = "";
+                
                 if (userInfo != null && userInfo.contains(":")) {
                     String[] userParts = userInfo.split(":", 2);
                     username = userParts[0];
                     password = userParts[1];
                 }
 
-                String dbType = dbUri.getScheme();
                 String host = dbUri.getHost();
                 int port = dbUri.getPort();
                 String path = dbUri.getPath();
 
-                if (port == -1) {
-                    port = dbType.equals("mysql") ? 3306 : 5432;
-                }
-
-                String jdbcUrl;
-                String driverClassName;
-                if (dbType.equals("mysql")) {
-                    jdbcUrl = "jdbc:mysql://" + host + ":" + port + path
+                if (scheme.startsWith("mysql")) {
+                    if (port == -1) {
+                        port = 3306;
+                    }
+                    dbUrl = "jdbc:mysql://" + host + ":" + port + path
                             + "?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true";
                     driverClassName = "com.mysql.cj.jdbc.Driver";
-                } else {
-                    jdbcUrl = "jdbc:postgresql://" + host + ":" + port + path + "?sslmode=require";
+                } else if (scheme.startsWith("postgres")) {
+                    if (port == -1) {
+                        port = 5432;
+                    }
+                    dbUrl = "jdbc:postgresql://" + host + ":" + port + path + "?sslmode=require";
                     driverClassName = "org.postgresql.Driver";
                 }
-
-                return DataSourceBuilder.create()
-                        .url(jdbcUrl)
-                        .username(username)
-                        .password(password)
-                        .driverClassName(driverClassName)
-                        .build();
             } catch (URISyntaxException e) {
-                // fall back to default properties on parsing error
+                log.error("Failed to parse DATABASE_URL: {}. Falling back to defaults.", e.getMessage());
             }
         }
 
+        log.info("Configured JDBC URL: {}, Driver: {}, Username: {}", maskUrl(dbUrl), driverClassName, username);
+
         return DataSourceBuilder.create()
-                .url(defaultUrl)
-                .username(defaultUsername)
-                .password(defaultPassword)
-                .driverClassName(defaultDriver)
+                .url(dbUrl)
+                .username(username)
+                .password(password)
+                .driverClassName(driverClassName)
                 .build();
+    }
+
+    @Bean
+    public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
+        return hibernateProperties -> {
+            String dbUrl = defaultUrl;
+            String envDbUrl = System.getenv("DATABASE_URL");
+            if (envDbUrl == null) {
+                envDbUrl = System.getProperty("DATABASE_URL");
+            }
+            if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
+                dbUrl = envDbUrl;
+            }
+
+            if (dbUrl != null) {
+                if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://") || dbUrl.contains("postgresql")) {
+                    hibernateProperties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+                    log.info("Dynamically configured Hibernate dialect to: PostgreSQLDialect");
+                } else if (dbUrl.startsWith("mysql://") || dbUrl.contains("mysql")) {
+                    hibernateProperties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+                    log.info("Dynamically configured Hibernate dialect to: MySQLDialect");
+                } else if (dbUrl.contains("h2")) {
+                    hibernateProperties.put("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
+                    log.info("Dynamically configured Hibernate dialect to: H2Dialect");
+                }
+            }
+        };
+    }
+
+    private String maskUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        return url.replaceAll(":[^:@]+@", ":******@").replaceAll("password=[^&]+", "password=******");
     }
 }
