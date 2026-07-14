@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import {
   User,
   Shield,
@@ -62,18 +63,8 @@ export default function Account() {
     return () => clearInterval(interval);
   }, [isOtpVerification, timer]);
 
-  // Current logged in user state
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-    }
-  }, [location.pathname]);
+  // Current logged in user state consumed from AuthContext
+  const { user, token, login, logout, register, setSession } = useAuth();
 
   // Google Sign In GSI Script Loader
   useEffect(() => {
@@ -113,14 +104,8 @@ export default function Account() {
         userType: userType
       });
       const { accessToken, user: userData } = res.data;
-      localStorage.setItem("token", accessToken);
-      localStorage.setItem("user", JSON.stringify(userData));
-
-      setToken(accessToken);
-      setUser(userData);
+      setSession(accessToken, userData);
       setSuccessMessage(`Welcome, ${userData.firstName}! 🎉`);
-
-      window.dispatchEvent(new Event("storage"));
       navigate("/account/profile");
     } catch (err) {
       console.error("Google Auth Error:", err);
@@ -131,14 +116,10 @@ export default function Account() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    setUser(null);
-    setToken(null);
+    logout();
     setSuccessMessage("Logged out successfully");
     setErrorMessage("");
     navigate("/account");
-    window.location.reload();
   };
 
   const handleProfileImageUpload = async (e) => {
@@ -179,16 +160,8 @@ export default function Account() {
 
     try {
       if (isLogin) {
-        const response = await api.post("/auth/login", { email, password });
-        const { accessToken, user: userData } = response.data;
-        localStorage.setItem("token", accessToken);
-        localStorage.setItem("user", JSON.stringify(userData));
-
-        setToken(accessToken);
-        setUser(userData);
+        const userData = await login(email, password);
         setSuccessMessage(`Welcome back, ${userData.firstName}! 🎉`);
-
-        window.dispatchEvent(new Event("storage"));
         navigate("/account/profile");
       } else {
         if (password !== confirmPassword) {
@@ -197,7 +170,7 @@ export default function Account() {
           return;
         }
 
-        await api.post("/auth/register", {
+        await register({
           firstName,
           lastName,
           email,

@@ -12,11 +12,12 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 export default function Topbar({ toggleMobileSidebar }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -64,12 +65,7 @@ export default function Topbar({ toggleMobileSidebar }) {
     }
   };
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, [location]);
+  // User profile state synchronization is managed dynamically via useAuth hook
 
   useEffect(() => {
     if (!user) {
@@ -176,12 +172,10 @@ export default function Topbar({ toggleMobileSidebar }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    setUser(null);
+    logout();
     setProfileOpen(false);
-    navigate("/account/profile");
-    window.location.reload();
+    toast.success("Logged out successfully");
+    navigate("/account");
   };
 
   if (isMobileSearchOpen) {

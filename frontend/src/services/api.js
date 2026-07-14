@@ -23,6 +23,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("storage"));
+      
+      const publicPaths = ["/account", "/", "/machinery", "/milk", "/fertilizers", "/farming-equipment", "/landselling", "/weather", "/farming-crop", "/top-deals"];
+      const isPublic = publicPaths.some(path => window.location.pathname === path || window.location.pathname.startsWith(path + "/"));
+      if (!isPublic) {
+        window.location.href = "/account";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function unwrapPage(response) {
   const body = response?.data?.data ?? response?.data;
 

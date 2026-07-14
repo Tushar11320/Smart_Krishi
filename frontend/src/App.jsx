@@ -1,5 +1,6 @@
 import React, { useState, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 
 const ProfileSection = React.lazy(() => import("./Pages/account/ProfileSection"));
 const SellerApplication = React.lazy(() => import("./Pages/account/SellerApplication"));
@@ -164,8 +165,9 @@ function App() {
   }
 
   return (
-    <MapProvider>
-      <div className="flex min-h-screen bg-gray-50/50">
+    <AuthProvider>
+      <MapProvider>
+        <div className="flex min-h-screen bg-gray-50/50">
       <Sidebar
         isOpen={isMobileSidebarOpen}
         toggleSidebar={toggleMobileSidebar}
@@ -428,8 +430,9 @@ function App() {
           <span>Back online. Sync complete!</span>
         </div>
       )}
-    </div>
-  </MapProvider>
+      </div>
+    </MapProvider>
+  </AuthProvider>
   );
 }
 
