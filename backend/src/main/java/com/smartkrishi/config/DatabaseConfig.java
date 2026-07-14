@@ -43,15 +43,17 @@ public class DatabaseConfig {
         String password = defaultPassword;
         String driverClassName = defaultDriver;
 
-        // If local profile is active, we can still allow overrides from DATABASE_URL if explicitly provided
-        String envDbUrl = System.getenv("DATABASE_URL");
-        if (envDbUrl == null) {
-            envDbUrl = System.getProperty("DATABASE_URL");
-        }
+        // Only look up DATABASE_URL when the active profile is not local
+        if (!"local".equals(activeProfile)) {
+            String envDbUrl = System.getenv("DATABASE_URL");
+            if (envDbUrl == null) {
+                envDbUrl = System.getProperty("DATABASE_URL");
+            }
 
-        if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
-            dbUrl = envDbUrl;
-            log.info("DATABASE_URL env override found: {}", maskUrl(dbUrl));
+            if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
+                dbUrl = envDbUrl;
+                log.info("DATABASE_URL env override found: {}", maskUrl(dbUrl));
+            }
         }
 
         if (dbUrl != null && (dbUrl.startsWith("mysql://") || dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"))) {
@@ -103,12 +105,14 @@ public class DatabaseConfig {
     public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
         return hibernateProperties -> {
             String dbUrl = defaultUrl;
-            String envDbUrl = System.getenv("DATABASE_URL");
-            if (envDbUrl == null) {
-                envDbUrl = System.getProperty("DATABASE_URL");
-            }
-            if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
-                dbUrl = envDbUrl;
+            if (!"local".equals(activeProfile)) {
+                String envDbUrl = System.getenv("DATABASE_URL");
+                if (envDbUrl == null) {
+                    envDbUrl = System.getProperty("DATABASE_URL");
+                }
+                if (envDbUrl != null && !envDbUrl.trim().isEmpty()) {
+                    dbUrl = envDbUrl;
+                }
             }
 
             if (dbUrl != null) {
