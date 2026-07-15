@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -36,6 +36,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional
 public class AuthServiceImpl implements AuthService {
+
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -79,8 +81,9 @@ public class AuthServiceImpl implements AuthService {
         user.setEmailVerified(false);
         user.setAuthProvider("LOCAL");
 
-        // Generate 6 digit OTP
-        String otp = String.format("%06d", new Random().nextInt(1000000));
+        // Generate 6 digit OTP securely
+        String otp = String.format("%06d", secureRandom.nextInt(1000000));
+        log.info("[OTP Generation] Generated code: {} for email: {}. Expiry: 10 minutes.", otp, request.getEmail());
         user.setOtpCode(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
         user.setOtpAttempts(0);
@@ -449,8 +452,9 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        // Generate new OTP
-        String otp = String.format("%06d", new Random().nextInt(1000000));
+        // Generate new OTP securely
+        String otp = String.format("%06d", secureRandom.nextInt(1000000));
+        log.info("[OTP Resend] Generated new code: {} for email: {}. Expiry: 10 minutes.", otp, user.getEmail());
         user.setOtpCode(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
         user.setOtpAttempts(0);
