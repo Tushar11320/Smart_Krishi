@@ -10,7 +10,7 @@ import {
   ChevronDown,
   ArrowLeft
 } from "lucide-react";
-import api from "../services/api";
+import api, { API_BASE_URL } from "../services/api";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 
@@ -91,7 +91,7 @@ export default function Topbar({ toggleMobileSidebar }) {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    const apiBase = API_BASE_URL;
     const wsProtocol = apiBase.startsWith("https") ? "wss" : "ws";
     const wsHost = apiBase.replace(/^https?:\/\//, "").replace(/\/api$/, "");
     const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications?token=${token}`;

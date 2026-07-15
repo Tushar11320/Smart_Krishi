@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { GoogleMap, Marker, Polyline } from "@react-google-maps/api";
 import { MapProvider } from "../components/MapProvider";
-import api, { formatPrice } from "../services/api";
+import api, { formatPrice, API_BASE_URL } from "../services/api";
 import {
   MapPin,
   Truck,
@@ -85,8 +85,8 @@ export default function OrderTracking() {
   useEffect(() => {
     if (!orderId || !token) return;
 
-    // Derive WS URL from VITE_API_BASE_URL or default
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    // Derive WS URL from API_BASE_URL
+    const apiBase = API_BASE_URL;
     const wsProto = apiBase.startsWith("https") ? "wss" : "ws";
     const wsHost = apiBase.replace(/^https?:\/\//, "").replace(/\/api$/, "");
     const wsUrl = `${wsProto}://${wsHost}/ws/track?orderId=${orderId}&token=${token}`;
