@@ -290,6 +290,35 @@ public class DataInitializer {
                 log.debug("Column carts.updated_at default already set or error: " + e.getMessage());
             }
 
+            // Fix feedbacks & task priority column: alter to ENUM in MySQL
+            try {
+                if (!isH2Database() && tableExists("feedbacks") && columnExists("feedbacks", "priority")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery(
+                            "ALTER TABLE feedbacks MODIFY COLUMN priority ENUM('CRITICAL','HIGH','MEDIUM','LOW') NOT NULL DEFAULT 'MEDIUM'"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column feedbacks.priority successfully updated to ENUM.");
+                }
+            } catch (Exception e) {
+                log.warn("Database column feedbacks.priority update warning: " + e.getMessage());
+            }
+
+            try {
+                if (!isH2Database() && tableExists("task") && columnExists("task", "priority")) {
+                    transactionTemplate.execute(status -> {
+                        entityManager.createNativeQuery(
+                            "ALTER TABLE task MODIFY COLUMN priority ENUM('CRITICAL','HIGH','MEDIUM','LOW') NOT NULL DEFAULT 'MEDIUM'"
+                        ).executeUpdate();
+                        return null;
+                    });
+                    log.info("Database column task.priority successfully updated to ENUM.");
+                }
+            } catch (Exception e) {
+                log.warn("Database column task.priority update warning: " + e.getMessage());
+            }
+
 
             transactionTemplate.execute(status -> {
                 String[] standardCategories = {
