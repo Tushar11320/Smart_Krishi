@@ -75,7 +75,7 @@ export default function Account() {
           console.warn("WARNING: VITE_GOOGLE_CLIENT_ID is not defined in frontend environment. Using default fallback Client ID.");
         }
         window.google.accounts.id.initialize({
-          client_id: clientId || "902721223221-q5i46gi0vco3e3lfn3f2it0nps2qio5r.apps.googleusercontent.com",
+          client_id: clientId || "958624899323-qhtsablqd330rvcmpffhnhd2jvt6ejat.apps.googleusercontent.com",
           callback: handleGoogleLoginCallback,
         });
 
