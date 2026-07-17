@@ -33,6 +33,10 @@ import org.springframework.context.annotation.Configuration;
                         description = "Local Development Server"
                 ),
                 @Server(
+                        url = "https://smart-krishi-951j.onrender.com/api",
+                        description = "Render Staging Server"
+                ),
+                @Server(
                         url = "https://api.smartkrishi.com",
                         description = "Production Server"
                 )
