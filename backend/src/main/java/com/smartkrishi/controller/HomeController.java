@@ -8,6 +8,11 @@ public class HomeController {
 
     @GetMapping("/")
     public String home() {
-        return "Smart Krishi Backend is Running Successfully!";
+        return "Smart Krishi Backend Running";
+    }
+
+    @GetMapping("/health")
+    public String health() {
+        return "OK";
     }
 }
