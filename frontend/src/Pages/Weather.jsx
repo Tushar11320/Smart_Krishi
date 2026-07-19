@@ -12,6 +12,12 @@ export default function Weather() {
   const [forecast, setForecast] = useState(null);
   const [searchMode, setSearchMode] = useState({ type: "city", value: "Bhopal" });
   const [error, setError] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const commonCities = ["Bhopal", "Indore", "Mumbai", "Delhi", "Pune", "Bengaluru", "Chennai", "Kolkata", "Hyderabad", "Ahmedabad", "Jaipur", "Lucknow", "Gwalior", "Jabalpur", "Ujjain"];
+  const suggestions = cityInput.trim().length >= 2 
+    ? commonCities.filter(c => c.toLowerCase().startsWith(cityInput.trim().toLowerCase()) && c.toLowerCase() !== cityInput.trim().toLowerCase())
+    : [];
 
   const fetchWeatherData = useCallback(async (mode) => {
     const activeMode = mode || searchMode;
@@ -38,7 +44,10 @@ export default function Weather() {
       }
     } catch (err) {
       console.error("Error fetching weather data:", err);
-      const errMsg = err.response?.data?.message || err.message || "Error synchronizing live weather statistics.";
+      let errMsg = err.response?.data?.message || err.message || "Error synchronizing live weather statistics.";
+      if (err.response?.status === 404) {
+        errMsg = "Location not found. Please check the spelling and try again.";
+      }
       toast.error(errMsg);
       setError(errMsg);
       setWeather(null);
@@ -99,11 +108,18 @@ export default function Weather() {
   }, [fetchWeatherData]);
 
   const handleSearch = () => {
-    if (!cityInput.trim()) {
+    const cleanInput = cityInput.trim();
+    if (!cleanInput) {
       toast.error("Please enter a city name");
       return;
     }
-    const newMode = { type: "city", value: cityInput.trim() };
+    const cityRegex = /^[a-zA-Z\s,\-]+$/;
+    if (!cityRegex.test(cleanInput)) {
+      toast.error("Please enter a valid city name containing only letters.");
+      return;
+    }
+    setShowSuggestions(false);
+    const newMode = { type: "city", value: cleanInput };
     setSearchMode(newMode);
     fetchWeatherData(newMode);
   };
@@ -189,12 +205,37 @@ export default function Weather() {
               <input
                 type="text"
                 value={cityInput}
-                onChange={(e) => setCityInput(e.target.value)}
+                onChange={(e) => {
+                  setCityInput(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 onKeyDown={handleKeyPress}
                 placeholder="Search city (e.g., Bhopal)..."
                 className="w-full md:w-64 pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-emerald-100 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 font-semibold text-emerald-950 shadow-sm transition-all text-sm"
               />
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-700/40" />
+              
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-emerald-100 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                  {suggestions.map((city, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setCityInput(city);
+                        setShowSuggestions(false);
+                        const newMode = { type: "city", value: city };
+                        setSearchMode(newMode);
+                        fetchWeatherData(newMode);
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-emerald-50/50 text-emerald-950 font-semibold text-sm transition-all border-b border-emerald-100/50 last:border-0 cursor-pointer"
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
@@ -228,16 +269,20 @@ export default function Weather() {
         {error && (
           <div className="p-8 bg-red-50/20 border border-red-200/50 backdrop-blur-md rounded-3xl max-w-2xl mx-auto text-center space-y-4 shadow-sm">
             <AlertTriangle className="mx-auto text-red-600" size={48} />
-            <h3 className="font-bold text-red-950 text-lg">Unable to Retrieve Live Weather</h3>
+            <h3 className="font-bold text-red-950 text-lg">
+              {error.includes("check the spelling") ? "Location Not Found" : "Unable to Retrieve Live Weather"}
+            </h3>
             <p className="text-sm font-semibold text-red-700/80 bg-white border border-red-100/50 rounded-xl p-3.5 shadow-inner">
               {error}
             </p>
-            <button
-              onClick={() => fetchWeatherData()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-2xl active:scale-95 transition-all text-sm cursor-pointer shadow-md inline-flex items-center gap-2"
-            >
-              <RefreshCw size={16} /> Retry Connection
-            </button>
+            {!error.includes("check the spelling") && (
+              <button
+                onClick={() => fetchWeatherData()}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-2xl active:scale-95 transition-all text-sm cursor-pointer shadow-md inline-flex items-center gap-2"
+              >
+                <RefreshCw size={16} /> Retry Connection
+              </button>
+            )}
           </div>
         )}
 

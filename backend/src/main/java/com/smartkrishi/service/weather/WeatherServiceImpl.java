@@ -7,6 +7,7 @@ import com.smartkrishi.dto.weather.WeatherForecastResponseDTO;
 import com.smartkrishi.dto.weather.WeatherResponseDTO;
 import com.smartkrishi.entity.WeatherCache;
 import com.smartkrishi.exception.BadRequestException;
+import com.smartkrishi.exception.LocationNotFoundException;
 import com.smartkrishi.exception.ResourceNotFoundException;
 import com.smartkrishi.repository.WeatherCacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -52,34 +53,40 @@ public class WeatherServiceImpl implements WeatherService {
             throw new BadRequestException("City name must not be empty");
         }
 
-        String cacheKey = city.trim().toLowerCase();
+        String cleanedCity = correctCommonMisspellings(city.trim());
+        String cacheKey = cleanedCity.toLowerCase();
         Optional<WeatherCache> cachedOpt = cacheRepository.findByCityIgnoreCase(cacheKey);
 
         if (cachedOpt.isPresent()) {
             WeatherCache cache = cachedOpt.get();
             if (cache.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(CACHE_MINUTES))) {
-                log.info("Cache hit for city weather: {}", city);
+                log.info("Cache hit for city weather: {}", cleanedCity);
                 try {
                     return parseCurrentWeatherResponse(cache.getApiResponse(), cache.getCity());
                 } catch (Exception e) {
                     log.error("Failed to parse cached weather response, fetching fresh data", e);
                 }
             } else {
-                log.info("Cache expired for city weather: {}", city);
+                log.info("Cache expired for city weather: {}", cleanedCity);
             }
         }
 
-        // Cache miss - Fetch from OpenWeather API
-        String url = String.format("%s/weather?q=%s&appid=%s&units=metric", baseUrl, city.trim(), apiKey);
+        // Cache miss - resolve coordinates first using Geocoding API
+        double[] coords = getCoordinatesForCity(cleanedCity);
+        Double lat = coords[0];
+        Double lon = coords[1];
+
+        // Fetch from OpenWeather API using coordinates
+        String url = String.format("%s/weather?lat=%s&lon=%s&appid=%s&units=metric", baseUrl, lat, lon, apiKey);
         String apiResponse = executeWithRetry(url);
 
         try {
             // Validate and parse to verify correctness
-            WeatherResponseDTO dto = parseCurrentWeatherResponse(apiResponse, city);
+            WeatherResponseDTO dto = parseCurrentWeatherResponse(apiResponse, cleanedCity);
             
             // Get coordinates to fetch air quality
-            Double lat = dto.getLatitude();
-            Double lon = dto.getLongitude();
+            dto.setLatitude(lat);
+            dto.setLongitude(lon);
             if (lat != null && lon != null) {
                 try {
                     Integer aqi = fetchAirQualityIndex(lat, lon);
@@ -127,13 +134,14 @@ public class WeatherServiceImpl implements WeatherService {
             throw new BadRequestException("City name must not be empty");
         }
 
-        String cacheKey = "forecast:" + city.trim().toLowerCase();
+        String cleanedCity = correctCommonMisspellings(city.trim());
+        String cacheKey = "forecast:" + cleanedCity.toLowerCase();
         Optional<WeatherCache> cachedOpt = cacheRepository.findByCityIgnoreCase(cacheKey);
 
         if (cachedOpt.isPresent()) {
             WeatherCache cache = cachedOpt.get();
             if (cache.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(CACHE_MINUTES))) {
-                log.info("Cache hit for city forecast: {}", city);
+                log.info("Cache hit for city forecast: {}", cleanedCity);
                 try {
                     return objectMapper.readValue(cache.getApiResponse(), WeatherForecastResponseDTO.class);
                 } catch (Exception e) {
@@ -142,12 +150,17 @@ public class WeatherServiceImpl implements WeatherService {
             }
         }
 
-        // Cache miss
-        String url = String.format("%s/forecast?q=%s&appid=%s&units=metric", baseUrl, city.trim(), apiKey);
+        // Cache miss - resolve coordinates first using Geocoding API
+        double[] coords = getCoordinatesForCity(cleanedCity);
+        double lat = coords[0];
+        double lon = coords[1];
+
+        // Fetch forecast using coordinates
+        String url = String.format("%s/forecast?lat=%s&lon=%s&appid=%s&units=metric", baseUrl, lat, lon, apiKey);
         String apiResponse = executeWithRetry(url);
 
         try {
-            WeatherForecastResponseDTO dto = parseForecastResponse(apiResponse, city);
+            WeatherForecastResponseDTO dto = parseForecastResponse(apiResponse, cleanedCity);
 
             // Save to database cache
             WeatherCache weatherCache = cachedOpt.orElse(new WeatherCache());
@@ -542,6 +555,49 @@ public class WeatherServiceImpl implements WeatherService {
             case 4: return "Poor";
             case 5: return "Very Poor";
             default: return "Unknown";
+        }
+    }
+
+    private String correctCommonMisspellings(String city) {
+        if (city == null) return null;
+        String lowercase = city.trim().toLowerCase();
+        Map<String, String> corrections = new HashMap<>();
+        corrections.put("indor", "Indore");
+        corrections.put("bopal", "Bhopal");
+        corrections.put("mubai", "Mumbai");
+        corrections.put("dehli", "Delhi");
+        corrections.put("deli", "Delhi");
+        corrections.put("banglore", "Bengaluru");
+        corrections.put("kolkataa", "Kolkata");
+        corrections.put("chenai", "Chennai");
+        
+        return corrections.getOrDefault(lowercase, city);
+    }
+
+    private double[] getCoordinatesForCity(String city) {
+        if (city == null || city.trim().isEmpty()) {
+            throw new BadRequestException("City name must not be empty");
+        }
+        
+        String cleanCity = city.trim();
+        String geoUrl = baseUrl.replace("/data/2.5", "") + String.format("/geo/1.0/direct?q=%s&limit=1&appid=%s", cleanCity, apiKey);
+        
+        try {
+            String response = executeWithRetry(geoUrl);
+            JsonNode root = objectMapper.readTree(response);
+            if (root.isArray() && root.size() > 0) {
+                JsonNode first = root.get(0);
+                double lat = first.path("lat").asDouble();
+                double lon = first.path("lon").asDouble();
+                return new double[]{lat, lon};
+            } else {
+                throw new LocationNotFoundException("Location not found. Please enter a valid city or location name.");
+            }
+        } catch (LocationNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error calling geocoding API for city: {}", cleanCity, e);
+            throw new BadRequestException("Failed to resolve location details");
         }
     }
 }
