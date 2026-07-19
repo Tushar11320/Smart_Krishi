@@ -190,18 +190,34 @@ export default function Account() {
       }
     } catch (err) {
       console.error(err);
-      if (err.response && err.response.data) {
+      if (err.response) {
+        const status = err.response.status;
         const errorData = err.response.data;
-        let msg = errorData.message || errorData.error || "An error occurred.";
-        if (errorData.fieldErrors) {
-          const details = Object.entries(errorData.fieldErrors)
-            .map(([field, errorMsg]) => `${field}: ${errorMsg}`)
-            .join(" | ");
-          msg = `Validation Error: ${details}`;
+        let msg = errorData.message || errorData.error || `HTTP Error ${status}: An error occurred on the server.`;
+
+        if (status === 400) {
+          if (errorData.fieldErrors) {
+            const details = Object.entries(errorData.fieldErrors)
+              .map(([field, errorMsg]) => `${field}: ${errorMsg}`)
+              .join(" | ");
+            msg = `Validation Error (400): ${details}`;
+          } else {
+            msg = `Bad Request (400): ${msg}`;
+          }
+        } else if (status === 404) {
+          msg = `Endpoint Not Found (404): The registration endpoint could not be found. Please check backend API mapping.`;
+        } else if (status >= 500) {
+          msg = `Server Error (${status}): Internal backend or database error occurred. Details: ${msg}`;
         }
         setErrorMessage(msg);
+      } else if (err.request) {
+        if (!navigator.onLine) {
+          setErrorMessage("Network Failure: Your internet connection is offline. Please check your network.");
+        } else {
+          setErrorMessage("Connection Error: The backend server is unreachable. This could be due to a CORS configuration mismatch or the server being offline. (API URL: " + API_BASE_URL + ")");
+        }
       } else {
-        setErrorMessage("Could not connect to the backend server.");
+        setErrorMessage(`Request Setup Error: ${err.message}`);
       }
     } finally {
       setLoading(false);

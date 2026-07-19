@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "/api";
+  import.meta.env.VITE_API_BASE_URL || "https://smart-krishi-951j.onrender.com/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

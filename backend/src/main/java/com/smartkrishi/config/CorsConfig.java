@@ -13,7 +13,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins:https://smart-krishi-three.vercel.app}")
+    @Value("${cors.allowed-origins:http://localhost:5173,https://smartkrishi1.netlify.app,https://smart-krishi-three.vercel.app}")
     private String allowedOrigins;
 
     @Value("${cors.allowed-methods:GET,POST,PUT,PATCH,DELETE,OPTIONS}")
