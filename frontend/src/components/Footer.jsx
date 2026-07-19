@@ -43,10 +43,16 @@ export default function Footer() {
         {/* Social Icons */}
         <div className="flex gap-5 text-2xl">
           <FaFacebook className="cursor-pointer hover:scale-110 transition" />
-          <FaInstagram className="cursor-pointer hover:scale-110 transition" />
+          <a href="https://www.instagram.com/smar.tkrishi?igsh=bjR0ZmZiY3d2YXdn" target="_blank" rel="noopener noreferrer">
+            <FaInstagram className="cursor-pointer hover:scale-110 transition hover:text-emerald-200" />
+          </a>
           <FaTwitter className="cursor-pointer hover:scale-110 transition" />
-          <FaLinkedin className="cursor-pointer hover:scale-110 transition" />
-          <FaYoutube className="cursor-pointer hover:scale-110 transition" />
+          <a href="https://www.linkedin.com/in/tushar-barskar-3b554a297?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank" rel="noopener noreferrer">
+            <FaLinkedin className="cursor-pointer hover:scale-110 transition hover:text-emerald-200" />
+          </a>
+          <a href="https://youtube.com/@studentmotivation-p5k?si=gBTtsbaiH61GVwHf" target="_blank" rel="noopener noreferrer">
+            <FaYoutube className="cursor-pointer hover:scale-110 transition hover:text-emerald-200" />
+          </a>
         </div>
 
         <div className="border-t border-green-500 mt-6 pt-4 text-center">
