@@ -61,6 +61,28 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // Listen to storage events to dynamically sync auth state across tabs and local components
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+      if (!storedToken || !storedUser) {
+        setToken(null);
+        setUser(null);
+      } else {
+        setToken(storedToken);
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          setUser(null);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   const login = async (email, password) => {
     setLoading(true);
     try {

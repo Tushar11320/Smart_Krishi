@@ -49,9 +49,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/health").permitAll()
+                        .requestMatchers("/", "/health", "/favicon.ico").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/weather").permitAll()
                         .requestMatchers("/api/weather/**").permitAll()
+                        .requestMatchers("/api/weather/forecast/**").permitAll()
+                        .requestMatchers("/api/weather/current/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 );

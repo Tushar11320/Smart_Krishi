@@ -11,10 +11,12 @@ export default function Weather() {
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [searchMode, setSearchMode] = useState({ type: "city", value: "Bhopal" });
+  const [error, setError] = useState(null);
 
   const fetchWeatherData = useCallback(async (mode) => {
     const activeMode = mode || searchMode;
     setLoading(true);
+    setError(null);
 
     try {
       if (activeMode.type === "city") {
@@ -34,11 +36,13 @@ export default function Weather() {
         setForecast(forecastData);
         setCityInput(currentData.city);
       }
-    } catch (error) {
-      console.error("Error fetching weather data:", error);
-      toast.error("Error synchronizing live weather statistics.");
-      // Load fallback mock data so user is not stuck on error
-      loadMockData(activeMode.type === "city" ? activeMode.value : "Bhopal");
+    } catch (err) {
+      console.error("Error fetching weather data:", err);
+      const errMsg = err.response?.data?.message || err.message || "Error synchronizing live weather statistics.";
+      toast.error(errMsg);
+      setError(errMsg);
+      setWeather(null);
+      setForecast(null);
     } finally {
       setLoading(false);
     }
@@ -136,8 +140,11 @@ export default function Weather() {
           toast.success(`Weather loaded for ${currentData.city}`, { id: toastId });
         } catch (err) {
           console.error("GPS fetch error:", err);
-          toast.error("Could not fetch weather for coordinates. Falling back.", { id: toastId });
-          loadMockData("Current Location");
+          const errMsg = err.response?.data?.message || err.message || "Could not fetch weather for coordinates.";
+          toast.error(errMsg, { id: toastId });
+          setError(errMsg);
+          setWeather(null);
+          setForecast(null);
         }
       },
       (error) => {
@@ -217,6 +224,23 @@ export default function Weather() {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-8 bg-red-50/20 border border-red-200/50 backdrop-blur-md rounded-3xl max-w-2xl mx-auto text-center space-y-4 shadow-sm">
+            <AlertTriangle className="mx-auto text-red-600" size={48} />
+            <h3 className="font-bold text-red-950 text-lg">Unable to Retrieve Live Weather</h3>
+            <p className="text-sm font-semibold text-red-700/80 bg-white border border-red-100/50 rounded-xl p-3.5 shadow-inner">
+              {error}
+            </p>
+            <button
+              onClick={() => fetchWeatherData()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-2xl active:scale-95 transition-all text-sm cursor-pointer shadow-md inline-flex items-center gap-2"
+            >
+              <RefreshCw size={16} /> Retry Connection
+            </button>
+          </div>
+        )}
+
         {/* Loading Indicator */}
         {loading && !weather ? (
           <div className="flex flex-col items-center justify-center min-h-[400px] bg-white/40 border border-emerald-50/50 backdrop-blur-sm rounded-3xl p-10">
@@ -224,7 +248,7 @@ export default function Weather() {
             <p className="mt-4 text-emerald-950 font-bold text-sm">Aggregating live weather feeds...</p>
           </div>
         ) : (
-          weather && (
+          !error && weather && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
               {/* Column 1 & 2: Current Weather & Forecast */}

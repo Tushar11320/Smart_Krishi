@@ -5,7 +5,7 @@ export const API_BASE_URL =
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -13,8 +13,9 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  const isWeatherEndpoint = config.url && (config.url.startsWith("/weather") || config.url.includes("/api/weather"));
 
-  if (token && token !== "null" && token !== "undefined" && token.trim() !== "") {
+  if (token && token !== "null" && token !== "undefined" && token.trim() !== "" && !isWeatherEndpoint) {
     config.headers.Authorization = `Bearer ${token}`;
   } else {
     delete config.headers.Authorization;

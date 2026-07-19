@@ -29,13 +29,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String[] excludePatterns = {
             "/",
             "/health",
+            "/favicon.ico",
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/google",
             "/api/auth/verify-otp",
             "/api/auth/resend-otp",
             "/api/auth/refresh-token",
+            "/api/weather",
             "/api/weather/**",
+            "/api/weather/forecast/**",
+            "/api/weather/current/**",
+            "/ws/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**"
