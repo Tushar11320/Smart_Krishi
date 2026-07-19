@@ -104,8 +104,9 @@ self.addEventListener("fetch", (event) => {
           // Return immediately, but fetch and update cache in the background
           fetch(request).then((networkResponse) => {
             if (networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
               caches.open(IMAGE_CACHE_NAME).then((cache) => {
-                cache.put(request, networkResponse);
+                cache.put(request, responseClone);
               });
             }
           }).catch(() => {/* Ignore background fetch failures */});
@@ -135,8 +136,9 @@ self.addEventListener("fetch", (event) => {
       const fetchPromise = fetch(request)
         .then((networkResponse) => {
           if (networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, networkResponse);
+              cache.put(request, responseClone);
             });
           }
           return networkResponse;

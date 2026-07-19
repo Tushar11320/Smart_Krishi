@@ -98,12 +98,20 @@ export default function Topbar({ toggleMobileSidebar }) {
 
     let socket;
     let reconnectTimeout;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
 
     const connectSocket = () => {
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        console.log("Max WebSocket reconnect attempts reached. Stopping reconnection.");
+        return;
+      }
+
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
         console.log("Notifications WebSocket connected");
+        reconnectAttempts = 0;
       };
 
       socket.onmessage = (event) => {
@@ -125,8 +133,13 @@ export default function Topbar({ toggleMobileSidebar }) {
       };
 
       socket.onclose = () => {
-        console.log("Notifications WebSocket closed, reconnecting in 5s...");
-        reconnectTimeout = setTimeout(connectSocket, 5000);
+        reconnectAttempts++;
+        if (reconnectAttempts < maxReconnectAttempts) {
+          console.log(`Notifications WebSocket closed, reconnecting in 5s (Attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
+          reconnectTimeout = setTimeout(connectSocket, 5000);
+        } else {
+          console.log("Max WebSocket reconnect attempts reached. Stopping reconnection.");
+        }
       };
 
       socket.onerror = (err) => {

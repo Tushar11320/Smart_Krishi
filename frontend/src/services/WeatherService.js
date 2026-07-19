@@ -2,16 +2,12 @@ import api from "./api";
 
 const WeatherService = {
   getCurrentWeather: async (city) => {
-    const response = await api.get(`/weather/current`, {
-      params: { city }
-    });
+    const response = await api.get(`/weather/current?city=${encodeURIComponent((city || "").trim())}`);
     return response.data;
   },
 
   getForecast: async (city) => {
-    const response = await api.get(`/weather/forecast`, {
-      params: { city }
-    });
+    const response = await api.get(`/weather/forecast?city=${encodeURIComponent((city || "").trim())}`);
     return response.data;
   },
 

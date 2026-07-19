@@ -44,9 +44,21 @@ export default function Weather() {
       }
     } catch (err) {
       console.error("Error fetching weather data:", err);
-      let errMsg = err.response?.data?.message || err.message || "Error synchronizing live weather statistics.";
-      if (err.response?.status === 404) {
-        errMsg = "Location not found. Please check the spelling and try again.";
+      let errMsg = "";
+      if (!err.response) {
+        errMsg = "Network error. Weather service is currently unavailable. Please try again later.";
+      } else if (err.response.status === 404) {
+        errMsg = err.response.data?.message || "Location not found. Try searching with city, state, and country.";
+      } else if (
+        err.response.status === 401 || 
+        err.response.status === 403 || 
+        (err.response.status === 400 && err.response.data?.message?.includes("API Key"))
+      ) {
+        errMsg = "Invalid Weather API key configuration. Please contact administrator.";
+      } else if (err.response.status >= 500) {
+        errMsg = "Backend server error. Failed to retrieve weather details.";
+      } else {
+        errMsg = err.response.data?.message || err.message || "Error synchronizing live weather statistics.";
       }
       toast.error(errMsg);
       setError(errMsg);
@@ -156,7 +168,22 @@ export default function Weather() {
           toast.success(`Weather loaded for ${currentData.city}`, { id: toastId });
         } catch (err) {
           console.error("GPS fetch error:", err);
-          const errMsg = err.response?.data?.message || err.message || "Could not fetch weather for coordinates.";
+          let errMsg = "";
+          if (!err.response) {
+            errMsg = "Network error. Weather service is currently unavailable. Please try again later.";
+          } else if (err.response.status === 404) {
+            errMsg = err.response.data?.message || "Location not found. Try searching with city, state, and country.";
+          } else if (
+            err.response.status === 401 || 
+            err.response.status === 403 || 
+            (err.response.status === 400 && err.response.data?.message?.includes("API Key"))
+          ) {
+            errMsg = "Invalid Weather API key configuration. Please contact administrator.";
+          } else if (err.response.status >= 500) {
+            errMsg = "Backend server error. Failed to retrieve weather details.";
+          } else {
+            errMsg = err.response.data?.message || err.message || "Could not fetch weather for coordinates.";
+          }
           toast.error(errMsg, { id: toastId });
           setError(errMsg);
           setWeather(null);
@@ -270,12 +297,12 @@ export default function Weather() {
           <div className="p-8 bg-red-50/20 border border-red-200/50 backdrop-blur-md rounded-3xl max-w-2xl mx-auto text-center space-y-4 shadow-sm">
             <AlertTriangle className="mx-auto text-red-600" size={48} />
             <h3 className="font-bold text-red-950 text-lg">
-              {error.includes("check the spelling") ? "Location Not Found" : "Unable to Retrieve Live Weather"}
+              {error.includes("Location not found") ? "Location Not Found" : "Unable to Retrieve Live Weather"}
             </h3>
             <p className="text-sm font-semibold text-red-700/80 bg-white border border-red-100/50 rounded-xl p-3.5 shadow-inner">
               {error}
             </p>
-            {!error.includes("check the spelling") && (
+            {!error.includes("Location not found") && (
               <button
                 onClick={() => fetchWeatherData()}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-2xl active:scale-95 transition-all text-sm cursor-pointer shadow-md inline-flex items-center gap-2"

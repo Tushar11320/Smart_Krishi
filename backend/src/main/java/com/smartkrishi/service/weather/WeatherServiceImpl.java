@@ -24,6 +24,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -580,8 +582,10 @@ public class WeatherServiceImpl implements WeatherService {
         }
         
         String cleanCity = city.trim();
-        String geoUrl = baseUrl.replace("/data/2.5", "") + String.format("/geo/1.0/direct?q=%s&limit=1&appid=%s", cleanCity, apiKey);
-        
+        String encodedCity = URLEncoder.encode(cleanCity, StandardCharsets.UTF_8);
+
+        // 1. Try exact city first
+        String geoUrl = baseUrl.replace("/data/2.5", "") + String.format("/geo/1.0/direct?q=%s&limit=1&appid=%s", encodedCity, apiKey);
         try {
             String response = executeWithRetry(geoUrl);
             JsonNode root = objectMapper.readTree(response);
@@ -590,14 +594,27 @@ public class WeatherServiceImpl implements WeatherService {
                 double lat = first.path("lat").asDouble();
                 double lon = first.path("lon").asDouble();
                 return new double[]{lat, lon};
-            } else {
-                throw new LocationNotFoundException("Location not found. Please enter a valid city or location name.");
             }
-        } catch (LocationNotFoundException e) {
-            throw e;
         } catch (Exception e) {
-            log.error("Error calling geocoding API for city: {}", cleanCity, e);
-            throw new BadRequestException("Failed to resolve location details");
+            log.warn("Geocoding failed for exact city: {}, trying fallback...", cleanCity, e);
         }
+
+        // 2. Fallback: try "city, India"
+        String fallbackUrl = baseUrl.replace("/data/2.5", "") + String.format("/geo/1.0/direct?q=%s,+India&limit=1&appid=%s", encodedCity, apiKey);
+        try {
+            String response = executeWithRetry(fallbackUrl);
+            JsonNode root = objectMapper.readTree(response);
+            if (root.isArray() && root.size() > 0) {
+                JsonNode first = root.get(0);
+                double lat = first.path("lat").asDouble();
+                double lon = first.path("lon").asDouble();
+                return new double[]{lat, lon};
+            }
+        } catch (Exception e) {
+            log.warn("Geocoding failed for fallback 'city, India': {}", cleanCity, e);
+        }
+
+        // 3. Still not found -> raise LocationNotFoundException with custom message
+        throw new LocationNotFoundException("Location not found. Try searching with city, state, and country.");
     }
 }
