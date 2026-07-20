@@ -6,11 +6,16 @@ import { Search, MapPin, RefreshCw, AlertTriangle, Lightbulb, CloudSun } from "l
 import toast, { Toaster } from "react-hot-toast";
 
 export default function Weather() {
-  const [cityInput, setCityInput] = useState("Bhopal");
+  const [cityInput, setCityInput] = useState(() => {
+    return localStorage.getItem("lastSearchedCity") || "Bhopal";
+  });
   const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState(null);
-  const [searchMode, setSearchMode] = useState({ type: "city", value: "Bhopal" });
+  const [searchMode, setSearchMode] = useState(() => {
+    const savedCity = localStorage.getItem("lastSearchedCity") || "Bhopal";
+    return { type: "city", value: savedCity };
+  });
   const [error, setError] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -32,7 +37,8 @@ export default function Weather() {
         
         const forecastData = await WeatherService.getForecast(city);
         setForecast(forecastData);
-        setCityInput(currentData.city);
+        // Save the successful searched city in localStorage
+        localStorage.setItem("lastSearchedCity", city);
       } else {
         const { lat, lon, city } = activeMode.value;
         const currentData = await WeatherService.getWeatherByCoordinates(lat, lon);
@@ -41,7 +47,9 @@ export default function Weather() {
         const forecastData = await WeatherService.getForecast(city || currentData.city);
         setForecast(forecastData);
         setCityInput(currentData.city);
+        localStorage.setItem("lastSearchedCity", currentData.city);
       }
+      return true;
     } catch (err) {
       console.error("Error fetching weather data:", err);
       let errMsg = "";
@@ -64,6 +72,7 @@ export default function Weather() {
       setError(errMsg);
       setWeather(null);
       setForecast(null);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -107,7 +116,8 @@ export default function Weather() {
   };
 
   useEffect(() => {
-    fetchWeatherData({ type: "city", value: "Bhopal" });
+    const savedCity = localStorage.getItem("lastSearchedCity") || "Bhopal";
+    fetchWeatherData({ type: "city", value: savedCity });
   }, []);
 
   // Auto-refresh every 30 minutes
@@ -165,6 +175,7 @@ export default function Weather() {
           };
           setSearchMode(newMode);
           setCityInput(currentData.city);
+          localStorage.setItem("lastSearchedCity", currentData.city);
           toast.success(`Weather loaded for ${currentData.city}`, { id: toastId });
         } catch (err) {
           console.error("GPS fetch error:", err);
@@ -197,11 +208,14 @@ export default function Weather() {
     );
   };
 
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     toast.loading("Refreshing weather statistics...", { id: "refresh" });
-    fetchWeatherData().then(() => {
+    const success = await fetchWeatherData();
+    if (success) {
       toast.success("Dashboard updated successfully!", { id: "refresh" });
-    });
+    } else {
+      toast.dismiss("refresh");
+    }
   };
 
   return (
@@ -270,7 +284,14 @@ export default function Weather() {
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white font-bold px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-md shadow-emerald-600/10 hover:shadow-emerald-700/20 active:scale-95 transition-all text-sm cursor-pointer"
             >
-              Search
+              {loading ? (
+                <>
+                  <RefreshCw className="animate-spin" size={16} />
+                  Searching...
+                </>
+              ) : (
+                "Search"
+              )}
             </button>
 
             <button
@@ -321,7 +342,7 @@ export default function Weather() {
           </div>
         ) : (
           !error && weather && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 transition-opacity duration-300 ${loading ? "opacity-60 pointer-events-none" : ""}`}>
               
               {/* Column 1 & 2: Current Weather & Forecast */}
               <div className="lg:col-span-2 space-y-8">

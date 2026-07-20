@@ -64,7 +64,9 @@ public class WeatherServiceImpl implements WeatherService {
             if (cache.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(CACHE_MINUTES))) {
                 log.info("Cache hit for city weather: {}", cleanedCity);
                 try {
-                    return parseCurrentWeatherResponse(cache.getApiResponse(), cache.getCity());
+                    WeatherResponseDTO dto = parseCurrentWeatherResponse(cache.getApiResponse(), cache.getCity());
+                    dto.setCity(cleanedCity);
+                    return dto;
                 } catch (Exception e) {
                     log.error("Failed to parse cached weather response, fetching fresh data", e);
                 }
@@ -122,6 +124,7 @@ public class WeatherServiceImpl implements WeatherService {
             weatherCache.setCreatedAt(LocalDateTime.now());
             cacheRepository.save(weatherCache);
 
+            dto.setCity(cleanedCity);
             return dto;
         } catch (Exception e) {
             log.error("Error processing weather API response for city: {}", city, e);
@@ -145,7 +148,9 @@ public class WeatherServiceImpl implements WeatherService {
             if (cache.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(CACHE_MINUTES))) {
                 log.info("Cache hit for city forecast: {}", cleanedCity);
                 try {
-                    return objectMapper.readValue(cache.getApiResponse(), WeatherForecastResponseDTO.class);
+                    WeatherForecastResponseDTO dto = objectMapper.readValue(cache.getApiResponse(), WeatherForecastResponseDTO.class);
+                    dto.setCity(cleanedCity);
+                    return dto;
                 } catch (Exception e) {
                     log.error("Failed to parse cached forecast response, fetching fresh data", e);
                 }
@@ -176,6 +181,7 @@ public class WeatherServiceImpl implements WeatherService {
             weatherCache.setCreatedAt(LocalDateTime.now());
             cacheRepository.save(weatherCache);
 
+            dto.setCity(cleanedCity);
             return dto;
         } catch (Exception e) {
             log.error("Error processing forecast API response for city: {}", city, e);
