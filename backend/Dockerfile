@@ -42,4 +42,4 @@ USER spring:spring
 EXPOSE 8080
 
 # Tune JVM parameters for container execution (MaxRAMPercentage respects memory limit allocations)
-ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -Dserver.port=${PORT:-8080} -Dserver.address=0.0.0.0 -jar app.jar"]
