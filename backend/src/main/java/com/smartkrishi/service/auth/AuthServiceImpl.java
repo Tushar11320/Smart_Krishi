@@ -217,7 +217,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse googleLogin(GoogleLoginRequest request) {
+        log.info("[GOOGLE LOGIN] Initiating Google login flow...");
         GoogleTokenPayload payload = validateGoogleToken(request.getToken());
+        log.info("[GOOGLE LOGIN] Google token successfully verified. Email: {}, Sub: {}", payload.getEmail(), payload.getSub());
         
         try {
             User user = userRepository.findByEmail(payload.getEmail()).orElse(null);
@@ -383,6 +385,7 @@ public class AuthServiceImpl implements AuthService {
             String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
 
             log.info("Google OAuth login successful for: {}", user.getEmail());
+            log.info("[GOOGLE LOGIN] Google login flow completed successfully for: {}", user.getEmail());
 
             return new JwtResponse(
                     token,
