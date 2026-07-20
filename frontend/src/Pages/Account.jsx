@@ -100,7 +100,7 @@ export default function Account() {
     setSuccessMessage("");
     try {
       const res = await api.post("/auth/google", {
-        idToken: response.credential,
+        token: response.credential,
         userType: userType
       });
       const { accessToken, user: userData } = res.data;

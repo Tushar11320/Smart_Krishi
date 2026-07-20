@@ -90,7 +90,7 @@ public class AuthServiceImplTest {
     @Test
     public void testGoogleLogin_WithFirstAndLastName_Success() {
         GoogleLoginRequest request = new GoogleLoginRequest();
-        request.setIdToken("valid-token-first-last");
+        request.setToken("valid-token-first-last");
         request.setUserType("BUYER");
 
         GoogleTokenPayload payload = new GoogleTokenPayload();
@@ -136,7 +136,7 @@ public class AuthServiceImplTest {
     @Test
     public void testGoogleLogin_WithOnlyOneName_Success() {
         GoogleLoginRequest request = new GoogleLoginRequest();
-        request.setIdToken("valid-token-one-name");
+        request.setToken("valid-token-one-name");
         request.setUserType("BUYER");
 
         GoogleTokenPayload payload = new GoogleTokenPayload();
@@ -252,7 +252,7 @@ public class AuthServiceImplTest {
     @Test
     public void testGoogleLogin_WithNameSplitting_Success() {
         GoogleLoginRequest request = new GoogleLoginRequest();
-        request.setIdToken("valid-token-splitting");
+        request.setToken("valid-token-splitting");
         request.setUserType("BUYER");
 
         GoogleTokenPayload payload = new GoogleTokenPayload();
@@ -295,7 +295,7 @@ public class AuthServiceImplTest {
     @Test
     public void testGoogleLogin_ExistingUserLink_Success() {
         GoogleLoginRequest request = new GoogleLoginRequest();
-        request.setIdToken("valid-token-link");
+        request.setToken("valid-token-link");
         request.setUserType("SELLER");
 
         GoogleTokenPayload payload = new GoogleTokenPayload();

@@ -217,7 +217,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse googleLogin(GoogleLoginRequest request) {
-        GoogleTokenPayload payload = validateGoogleToken(request.getIdToken());
+        GoogleTokenPayload payload = validateGoogleToken(request.getToken());
         
         try {
             User user = userRepository.findByEmail(payload.getEmail()).orElse(null);
@@ -481,8 +481,16 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendEmail(toEmail, subject, content);
     }
 
-    private GoogleTokenPayload validateGoogleToken(String idTokenString) {
+    private GoogleTokenPayload validateGoogleToken(String tokenString) {
         try {
+            // Task 7: Log received token length, first 30 characters, and configured Google Client ID
+            int tokenLength = (tokenString != null) ? tokenString.length() : 0;
+            String tokenPrefix = (tokenString != null && tokenString.length() > 30) 
+                    ? tokenString.substring(0, 30) 
+                    : (tokenString != null ? tokenString : "null");
+            log.info("[GOOGLE AUTH] Verification attempt. Token length: {}, Prefix: {}, Configured Client ID: {}", 
+                     tokenLength, tokenPrefix, googleClientId);
+
             NetHttpTransport transport = new NetHttpTransport();
             GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
 
@@ -493,16 +501,16 @@ public class AuthServiceImpl implements AuthService {
             }
             
             GoogleIdTokenVerifier verifier = verifierBuilder.build();
-            GoogleIdToken idToken = verifier.verify(idTokenString);
+            GoogleIdToken idToken = verifier.verify(tokenString);
 
             if (idToken == null) {
-                log.error("[GOOGLE AUTH ERROR] Verification returned null. Configured client ID: {}", googleClientId);
+                // Task 9: Log if verification returns null
+                log.error("[GOOGLE AUTH ERROR] Verification returned null. Token might be invalid, expired, or audience mismatched. Configured client ID: {}", googleClientId);
                 throw new BadRequestException("Google token is invalid or expired.");
             }
 
             GoogleIdToken.Payload payload = idToken.getPayload();
             
-            // Log details as requested by Task 9
             log.info("[GOOGLE AUTH VERIFIED] Email: {}, Token Aud (aud): {}, Configured Client ID: {}", 
                      payload.getEmail(), payload.getAudience(), googleClientId);
 
@@ -526,8 +534,9 @@ public class AuthServiceImpl implements AuthService {
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Google ID Token validation failed", e);
-            throw new BadRequestException("Google authentication failed. Please try again.");
+            // Task 9: Log the exact exception instead of general message
+            log.error("Google ID Token verification failed with exception: {}", e.getMessage(), e);
+            throw new BadRequestException("Google authentication failed. Reason: " + e.getMessage());
         }
     }
 
