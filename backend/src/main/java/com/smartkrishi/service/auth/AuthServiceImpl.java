@@ -494,22 +494,23 @@ public class AuthServiceImpl implements AuthService {
             log.info("[GOOGLE AUTH] Verification attempt. Token length: {}, Prefix: {}, Configured Client ID: {}", 
                      tokenLength, tokenPrefix, googleClientId);
 
-            NetHttpTransport transport = new NetHttpTransport();
-            GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
-
-            GoogleIdTokenVerifier.Builder verifierBuilder = new GoogleIdTokenVerifier.Builder(transport, jsonFactory);
-            
-            if (googleClientId != null && !googleClientId.trim().isEmpty() && !googleClientId.equals("YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com")) {
-                verifierBuilder.setAudience(Collections.singletonList(googleClientId));
+            if (googleClientId == null || googleClientId.trim().isEmpty() || "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com".equals(googleClientId)) {
+                log.error("[GOOGLE AUTH ERROR] Google Client ID is not configured or set to placeholder value! Current configured client ID: {}", googleClientId);
+                throw new BadRequestException("Google Client ID is not configured in backend settings.");
             }
-            
-            GoogleIdTokenVerifier verifier = verifierBuilder.build();
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
             GoogleIdToken idToken = verifier.verify(tokenString);
 
             if (idToken == null) {
                 // Task 9: Log if verification returns null
                 log.error("[GOOGLE AUTH ERROR] Verification returned null. Token might be invalid, expired, or audience mismatched. Configured client ID: {}", googleClientId);
-                throw new BadRequestException("Google token is invalid or expired.");
+                throw new BadRequestException("Google token verification returned null. The token is invalid, expired, or audience mismatch (Token aud doesn't match configured Google Client ID).");
             }
 
             GoogleIdToken.Payload payload = idToken.getPayload();

@@ -136,7 +136,7 @@ openweather:
 
 # Google Maps Configuration
 google:
-  client-id: ${GOOGLE_CLIENT_ID:}
+  client-id: ${GOOGLE_CLIENT_ID:958624899323-qp4amk6u9u0auos480om71q016pugo39.apps.googleusercontent.com}
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   maps:
     api-key: ${GOOGLE_MAPS_API_KEY:}
