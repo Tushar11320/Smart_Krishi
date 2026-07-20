@@ -15,4 +15,9 @@ public class HomeController {
     public String health() {
         return "OK";
     }
+
+    @GetMapping("/favicon.ico")
+    public org.springframework.http.ResponseEntity<Void> returnNoFavicon() {
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
 }
