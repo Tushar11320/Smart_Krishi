@@ -499,6 +499,44 @@ public class AuthServiceImpl implements AuthService {
                 throw new BadRequestException("Google Client ID is not configured in backend settings.");
             }
 
+            // Task 6: Decode the token payload prior to verification to log the audience and issuer
+            String incomingAudience = null;
+            try {
+                String[] parts = tokenString.split("\\.");
+                if (parts.length >= 2) {
+                    String payloadJson = new String(java.util.Base64.getUrlDecoder().decode(parts[1]), java.nio.charset.StandardCharsets.UTF_8);
+                    log.info("[GOOGLE AUTH] Decoded incoming token payload: {}", payloadJson);
+                    
+                    // Simple parse to extract "aud" value using substring to avoid adding JSON parsing libraries
+                    int audIndex = payloadJson.indexOf("\"aud\"");
+                    if (audIndex != -1) {
+                        int colonIndex = payloadJson.indexOf(":", audIndex);
+                        if (colonIndex != -1) {
+                            int startQuote = payloadJson.indexOf("\"", colonIndex);
+                            if (startQuote != -1) {
+                                int endQuote = payloadJson.indexOf("\"", startQuote + 1);
+                                if (endQuote != -1) {
+                                    incomingAudience = payloadJson.substring(startQuote + 1, endQuote);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    log.warn("[GOOGLE AUTH] Token is not a valid 3-part JWT. Parts count: {}", parts.length);
+                }
+            } catch (Exception e) {
+                log.error("[GOOGLE AUTH] Failed to decode incoming token payload: {}", e.getMessage());
+            }
+
+            // Task 6: Explicitly check for audience mismatch and log details prior to Google verifier call
+            if (incomingAudience != null && !googleClientId.equals(incomingAudience)) {
+                log.error("[GOOGLE AUTH ERROR] Audience mismatch detected. Token audience (aud): {}, Configured backend Client ID: {}", 
+                          incomingAudience, googleClientId);
+                throw new BadRequestException("Google token audience mismatch. Token audience is " 
+                        + incomingAudience + " but backend is configured for " + googleClientId 
+                        + ". Please ensure environment variables are synchronized on Vercel and Render.");
+            }
+
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     new NetHttpTransport(),
                     GsonFactory.getDefaultInstance())
