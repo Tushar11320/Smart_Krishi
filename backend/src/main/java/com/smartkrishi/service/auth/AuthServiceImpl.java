@@ -14,6 +14,11 @@ import com.smartkrishi.security.UserPrincipal;
 import com.smartkrishi.service.notification.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.client.RestTemplate;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -476,26 +481,48 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendEmail(toEmail, subject, content);
     }
 
-    private GoogleTokenPayload validateGoogleToken(String idToken) {
+    private GoogleTokenPayload validateGoogleToken(String idTokenString) {
         try {
-            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
-            GoogleTokenPayload payload = restTemplate.getForObject(url, GoogleTokenPayload.class);
-            if (payload == null || payload.getEmail() == null) {
-                throw new BadRequestException("Google token is invalid or expired.");
+            NetHttpTransport transport = new NetHttpTransport();
+            GsonFactory jsonFactory = GsonFactory.getDefaultInstance();
+
+            GoogleIdTokenVerifier.Builder verifierBuilder = new GoogleIdTokenVerifier.Builder(transport, jsonFactory);
+            
+            if (googleClientId != null && !googleClientId.trim().isEmpty() && !googleClientId.equals("YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com")) {
+                verifierBuilder.setAudience(Collections.singletonList(googleClientId));
             }
             
-            // Validate email verification status
-            if (payload.getEmailVerified() != null && !"true".equalsIgnoreCase(payload.getEmailVerified())) {
-                throw new BadRequestException("Google account email is not verified.");
+            GoogleIdTokenVerifier verifier = verifierBuilder.build();
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+
+            if (idToken == null) {
+                log.error("[GOOGLE AUTH ERROR] Verification returned null. Configured client ID: {}", googleClientId);
+                throw new BadRequestException("Google token is invalid or expired.");
             }
 
-            // Validate client ID if configured
-            if (googleClientId != null && !googleClientId.trim().isEmpty() && !googleClientId.equals("YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com")) {
-                if (!googleClientId.equals(payload.getAud())) {
-                    throw new BadRequestException("Google token audience mismatch.");
-                }
-            }
-            return payload;
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            
+            // Log details as requested by Task 9
+            log.info("[GOOGLE AUTH VERIFIED] Email: {}, Token Aud (aud): {}, Configured Client ID: {}", 
+                     payload.getEmail(), payload.getAudience(), googleClientId);
+
+            GoogleTokenPayload tokenPayload = new GoogleTokenPayload();
+            tokenPayload.setSub(payload.getSubject());
+            tokenPayload.setEmail(payload.getEmail());
+            tokenPayload.setEmailVerified(String.valueOf(payload.getEmailVerified()));
+            tokenPayload.setAud(String.valueOf(payload.getAudience()));
+            
+            String name = (String) payload.get("name");
+            String picture = (String) payload.get("picture");
+            String givenName = (String) payload.get("given_name");
+            String familyName = (String) payload.get("family_name");
+            
+            tokenPayload.setName(name);
+            tokenPayload.setPicture(picture);
+            tokenPayload.setGivenName(givenName);
+            tokenPayload.setFamilyName(familyName);
+
+            return tokenPayload;
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
