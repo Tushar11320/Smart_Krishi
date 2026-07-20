@@ -120,7 +120,7 @@ export default function ProfileSection() {
         setShowPasswordForm(false);
       }, 3000);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to change password:", err.message);
       setPassError(err.response?.data?.message || "Failed to update password. Verify current password.");
     } finally {
       setPassLoading(false);
@@ -326,6 +326,7 @@ export default function ProfileSection() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-xs bg-white"
+                autoComplete="current-password"
               />
             </div>
 
@@ -337,6 +338,7 @@ export default function ProfileSection() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-xs bg-white"
+                autoComplete="new-password"
               />
             </div>
 
@@ -348,6 +350,7 @@ export default function ProfileSection() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-xs bg-white"
+                autoComplete="new-password"
               />
             </div>
 

@@ -100,7 +100,9 @@ function App() {
     window.addEventListener("offline", handleOffline);
 
     const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
+      if (e.cancelable) {
+        e.preventDefault();
+      }
       setDeferredPrompt(e);
       setTimeout(() => {
         if (!sessionStorage.getItem("pwa_banner_dismissed")) {
@@ -109,12 +111,19 @@ function App() {
       }, 5000);
     };
 
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 

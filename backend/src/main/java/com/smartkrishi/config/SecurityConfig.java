@@ -41,7 +41,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())) // Allow H2 console
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()) // Allow H2 console
+                        .addHeaderWriter(new org.springframework.security.web.header.writers.StaticHeadersWriter("Cross-Origin-Opener-Policy", "same-origin-allow-popups"))
+                )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(new com.smartkrishi.exception.JwtAuthenticationEntryPoint())
                         .accessDeniedHandler(new com.smartkrishi.exception.JwtAccessDeniedHandler())

@@ -1,7 +1,10 @@
 import axios from "axios";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://smart-krishi-951j.onrender.com/api";
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:8080/api"
+    : "https://smart-krishi-951j.onrender.com/api");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,6 +15,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // Prevent duplicate /api/api/... prefix if baseURL already ends with /api
+  if (config.url && config.url.startsWith("/api/") && config.baseURL && config.baseURL.endsWith("/api")) {
+    config.url = config.url.replace(/^\/api/, "");
+  }
+
   const token = localStorage.getItem("token");
   const isWeatherEndpoint = config.url && (config.url.startsWith("/weather") || config.url.includes("/api/weather"));
 

@@ -75,7 +75,7 @@ export default function Account() {
           console.warn("WARNING: VITE_GOOGLE_CLIENT_ID is not defined in frontend environment. Using default fallback Client ID.");
         }
         window.google.accounts.id.initialize({
-          client_id: clientId || "958624899323-qhtsablqd330rvcmpffhnhd2jvt6ejat.apps.googleusercontent.com",
+          client_id: clientId || "902721223221-q5i46gi0vco3e3lfn3f2it0nps2qio5r.apps.googleusercontent.com",
           callback: handleGoogleLoginCallback,
         });
 
@@ -189,7 +189,7 @@ export default function Account() {
         setSuccessMessage("Account created! Verification code sent to your email.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Authentication request failed:", err.message);
       if (err.response) {
         const status = err.response.status;
         const errorData = err.response.data;
@@ -626,6 +626,7 @@ export default function Account() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border border-gray-300 p-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            autoComplete={isLogin ? "current-password" : "new-password"}
             required
           />
 
@@ -636,6 +637,7 @@ export default function Account() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full border border-gray-300 p-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              autoComplete="new-password"
               required
             />
           )}
