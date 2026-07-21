@@ -34,13 +34,13 @@ public class MailConfig {
     @Value("${spring.mail.properties.mail.smtp.starttls.required:true}")
     private String starttlsRequired;
 
-    @Value("${spring.mail.properties.mail.smtp.connectiontimeout:5000}")
+    @Value("${spring.mail.properties.mail.smtp.connectiontimeout:30000}")
     private int connectionTimeout;
 
-    @Value("${spring.mail.properties.mail.smtp.timeout:5000}")
+    @Value("${spring.mail.properties.mail.smtp.timeout:30000}")
     private int timeout;
 
-    @Value("${spring.mail.properties.mail.smtp.writetimeout:5000}")
+    @Value("${spring.mail.properties.mail.smtp.writetimeout:30000}")
     private int writeTimeout;
 
     @Bean
@@ -59,6 +59,7 @@ public class MailConfig {
         props.put("mail.smtp.connectiontimeout", String.valueOf(connectionTimeout));
         props.put("mail.smtp.timeout", String.valueOf(timeout));
         props.put("mail.smtp.writetimeout", String.valueOf(writeTimeout));
+        props.put("mail.debug", "true");
 
         // For Gmail specifically, TLSv1.2 or TLSv1.3 is recommended
         props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");

@@ -8,8 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.Properties;
 
 @Service
 @Slf4j
@@ -20,6 +21,21 @@ public class EmailServiceImpl implements EmailService {
 
     @Value("${spring.mail.username:}")
     private String fromEmail;
+
+    @Value("${email.fallback.enabled:false}")
+    private boolean fallbackEnabled;
+
+    @Value("${email.fallback.host:}")
+    private String fallbackHost;
+
+    @Value("${email.fallback.port:587}")
+    private int fallbackPort;
+
+    @Value("${email.fallback.username:}")
+    private String fallbackUsername;
+
+    @Value("${email.fallback.password:}")
+    private String fallbackPassword;
 
     private static final int MAX_RETRIES = 3;
     private static final long RETRY_DELAY_MS = 2000;
@@ -34,15 +50,19 @@ public class EmailServiceImpl implements EmailService {
             throw new BadRequestException("Please enter a valid email address.");
         }
 
-        // 2. Verify environment variables are loaded and SMTP credentials are not missing or placeholders
+        // 2. Check if primary sender is null
         if (mailSender == null) {
-            log.error("[SMTP] JavaMailSender bean is not initialized. Check your mail configuration properties.");
-            throw new BadRequestException("SMTP Mail Sender is not initialized. Please check that MAIL_HOST, MAIL_PORT, MAIL_USERNAME and MAIL_PASSWORD are set correctly in your environment configuration.");
-        }
-
-        if (fromEmail == null || fromEmail.trim().isEmpty() || fromEmail.equals("your-email@gmail.com")) {
-            log.error("[SMTP] MAIL_USERNAME (sender email) is empty or configured with a default placeholder: {}", fromEmail);
-            throw new BadRequestException("Sender email address (MAIL_USERNAME) is missing or configured with a placeholder. Please set a valid sender email.");
+            log.warn("[SMTP] Primary JavaMailSender is null. Attempting fallback immediately if enabled.");
+            if (fallbackEnabled) {
+                try {
+                    sendUsingFallback(to, subject, content);
+                    return;
+                } catch (Exception ex) {
+                    throw new BadRequestException("Primary SMTP is not initialized and Fallback SMTP failed: " + getDetailedErrorMessage(ex));
+                }
+            } else {
+                throw new BadRequestException("SMTP Mail Sender is not initialized. Please configure SMTP or enable fallback.");
+            }
         }
 
         if (mailSender instanceof JavaMailSenderImpl) {
@@ -56,7 +76,7 @@ public class EmailServiceImpl implements EmailService {
 
             log.info("[SMTP Diagnostics] Host: {}, Port: {}, Username: {}, Password: {}", host, port, username, maskedPassword);
 
-            if (password == null || password.trim().isEmpty() || password.equals("your-email-password") || password.equals("68A0EEC085847BB52E485ABD5CABFE231D50")) {
+            if (password == null || password.trim().isEmpty() || password.equals("your-email-password")) {
                 log.error("[SMTP] SMTP Password is empty or uses placeholder credentials");
                 throw new BadRequestException("SMTP credentials verification failed: Password is missing or uses a placeholder password. Please provide a valid App Password.");
             }
@@ -68,20 +88,6 @@ public class EmailServiceImpl implements EmailService {
 
         while (attempt < MAX_RETRIES) {
             attempt++;
-            
-            // Confirm SMTP connectivity before retrying
-            if (attempt > 1) {
-                log.info("[SMTP] Confirming SMTP connectivity before retry attempt {}...", attempt);
-                boolean connected = checkSmtpConnectivity();
-                if (!connected) {
-                    log.error("[SMTP] Connectivity check failed before retry. Aborting retries.");
-                    throw new BadRequestException("SMTP server became unreachable. Aborting email retry attempt " + attempt 
-                            + ". (If running on Render, verify outbound SMTP is allowed.) "
-                            + "Last error: " + getDetailedErrorMessage(lastException));
-                }
-                log.info("[SMTP] SMTP connectivity confirmed. Proceeding with retry attempt {}...", attempt);
-            }
-
             try {
                 log.info("[SMTP] Attempt {}/{} to send email to {}", attempt, MAX_RETRIES, to);
                 MimeMessage message = mailSender.createMimeMessage();
@@ -94,19 +100,26 @@ public class EmailServiceImpl implements EmailService {
                 log.info("[SMTP] Sending MIME message to: {} ...", to);
                 mailSender.send(message);
                 log.info("[SMTP] Email sent successfully to {} on attempt {}", to, attempt);
-                log.warn("[SPAM FOLDER WARNING] Ask the user to check their junk/spam folder if the email is not visible in the inbox.");
                 return;
             } catch (org.springframework.mail.MailAuthenticationException e) {
-                log.error("[SMTP] Authentication failed on attempt {}: {}", attempt, e.getMessage());
-                throw new BadRequestException("SMTP Authentication failed: " + getDetailedErrorMessage(e) + ". Please check your Google App Password / credentials.");
+                lastException = e;
+                log.error("[SMTP] Authentication failed on attempt {}: {}", attempt, getDetailedErrorMessage(e));
+                // Authentication failure is fatal for this provider
+                break;
             } catch (Exception e) {
                 lastException = e;
-                log.warn("[SMTP] Error sending email on attempt {} of {}: {}", attempt, MAX_RETRIES, e.getMessage());
+                boolean isTimeout = isTimeoutException(e);
+                if (isTimeout) {
+                    log.error("[SMTP] Network connection timeout occurred on attempt {}: {}", attempt, getDetailedErrorMessage(e));
+                } else {
+                    log.warn("[SMTP] Error sending email on attempt {} of {}: {}", attempt, MAX_RETRIES, getDetailedErrorMessage(e));
+                }
                 
                 if (attempt < MAX_RETRIES && isTransientException(e)) {
-                    log.info("[SMTP] Transient error detected. Retrying in {}ms...", RETRY_DELAY_MS);
+                    long backoffDelay = RETRY_DELAY_MS * (long) Math.pow(2, attempt - 1);
+                    log.info("[SMTP] Transient error detected. Retrying in {}ms (exponential backoff)...", backoffDelay);
                     try {
-                        Thread.sleep(RETRY_DELAY_MS);
+                        Thread.sleep(backoffDelay);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         throw new BadRequestException("Email sending interrupted during retry: " + ie.getMessage());
@@ -117,24 +130,85 @@ public class EmailServiceImpl implements EmailService {
             }
         }
 
-        log.error("[SMTP] Failed to deliver email to recipient: {} after {} attempts. Error Stack Trace: ", to, MAX_RETRIES, lastException);
+        // 4. Fall back to secondary email provider if enabled
+        if (fallbackEnabled) {
+            log.warn("[SMTP] Primary SMTP failed. Attempting fallback email provider...");
+            try {
+                sendUsingFallback(to, subject, content);
+                return;
+            } catch (Exception ex) {
+                log.error("[SMTP] Fallback email provider failed as well.", ex);
+                throw new BadRequestException("Primary SMTP failed (" + getDetailedErrorMessage(lastException) + 
+                        ") and Fallback SMTP failed (" + getDetailedErrorMessage(ex) + ").");
+            }
+        }
+
+        log.error("[SMTP] Failed to deliver email to recipient: {} after {} attempts. Error: ", to, MAX_RETRIES, lastException);
         throw new BadRequestException("Email delivery failed after " + MAX_RETRIES + " attempts. Exact SMTP error: " + getDetailedErrorMessage(lastException));
     }
 
-    private boolean checkSmtpConnectivity() {
-        if (mailSender instanceof JavaMailSenderImpl) {
-            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
-            String host = impl.getHost();
-            int port = impl.getPort();
-            try (java.net.Socket socket = new java.net.Socket()) {
-                socket.connect(new java.net.InetSocketAddress(host, port), 5000);
-                return true;
-            } catch (Exception e) {
-                log.error("[SMTP Connection Check] Failed to reach SMTP server {}:{} -> {}", host, port, e.getMessage());
-                return false;
-            }
+    private void sendUsingFallback(String to, String subject, String content) throws Exception {
+        if (fallbackHost == null || fallbackHost.trim().isEmpty()) {
+            throw new IllegalStateException("Fallback host is not configured");
         }
-        return true;
+        log.info("[SMTP Fallback] Sending email via fallback host: {}, port: {}", fallbackHost, fallbackPort);
+        
+        JavaMailSenderImpl fallbackSender = new JavaMailSenderImpl();
+        fallbackSender.setHost(fallbackHost);
+        fallbackSender.setPort(fallbackPort);
+        fallbackSender.setUsername(fallbackUsername);
+        fallbackSender.setPassword(fallbackPassword);
+
+        Properties props = fallbackSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.connectiontimeout", "30000");
+        props.put("mail.smtp.timeout", "30000");
+        props.put("mail.smtp.writetimeout", "30000");
+        props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
+        props.put("mail.debug", "true");
+
+        MimeMessage message = fallbackSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(fallbackUsername != null && !fallbackUsername.isEmpty() ? fallbackUsername : fromEmail);
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(content, true);
+
+        fallbackSender.send(message);
+        log.info("[SMTP Fallback] Email sent successfully to {}", to);
+    }
+
+    private boolean isTimeoutException(Throwable e) {
+        if (e == null) return false;
+        String className = e.getClass().getName();
+        if (e instanceof java.net.SocketTimeoutException || 
+            e instanceof java.net.ConnectException ||
+            className.equals("com.sun.mail.util.MailConnectException")) {
+            return true;
+        }
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("timeout") || msg.contains("connect timed out") || msg.contains("connection timed out")) {
+            return true;
+        }
+        return isTimeoutException(e.getCause());
+    }
+
+    private boolean isTransientException(Throwable e) {
+        if (e == null) return false;
+        if (e instanceof org.springframework.mail.MailAuthenticationException) {
+            return false;
+        }
+        if (isTimeoutException(e)) {
+            return true;
+        }
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("temporary") || msg.contains("try again") || msg.contains("421") || msg.contains("451") || msg.contains("452")) {
+            return true;
+        }
+        return isTransientException(e.getCause());
     }
 
     private String getDetailedErrorMessage(Throwable e) {
@@ -150,14 +224,5 @@ public class EmailServiceImpl implements EmailService {
             depth++;
         }
         return sb.toString();
-    }
-
-    private boolean isTransientException(Throwable e) {
-        if (e == null) return false;
-        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-        if (msg.contains("timeout") || msg.contains("connect") || msg.contains("temporary") || msg.contains("try again")) {
-            return true;
-        }
-        return isTransientException(e.getCause());
     }
 }
