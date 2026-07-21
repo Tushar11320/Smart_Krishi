@@ -66,8 +66,25 @@ public class EnvValidator {
 
         // Critical configurations - Missing values will crash the application
         checkRequired(dbUrl, "spring.datasource.url (DATABASE_URL)", missingOrInvalid, "jdbc:mysql");
-        checkRequired(dbUsername, "spring.datasource.username (DATABASE_USERNAME)", missingOrInvalid, "username");
-        checkRequired(dbPassword, "spring.datasource.password (DATABASE_PASSWORD)", missingOrInvalid, "password");
+        
+        boolean hasUserInfoInUrl = false;
+        if (dbUrl != null && (dbUrl.startsWith("mysql://") || dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"))) {
+            try {
+                java.net.URI dbUri = new java.net.URI(dbUrl);
+                if (dbUri.getUserInfo() != null && dbUri.getUserInfo().contains(":")) {
+                    hasUserInfoInUrl = true;
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        if (!hasUserInfoInUrl) {
+            checkRequired(dbUsername, "spring.datasource.username (DATABASE_USERNAME)", missingOrInvalid, "username");
+            checkRequired(dbPassword, "spring.datasource.password (DATABASE_PASSWORD)", missingOrInvalid, "password");
+        } else {
+            log.info("Database credentials will be dynamically parsed from DATABASE_URL. Skipping standalone username/password check.");
+        }
         checkRequired(jwtSecret, "spring.security.jwt.secret (JWT_SECRET)", missingOrInvalid, "secret");
 
         // Optional configurations - Missing values will log warnings but allow startup
