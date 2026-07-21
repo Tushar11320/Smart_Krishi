@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/health", "/api/health", "/favicon.ico").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/test/**").permitAll()
+                        .requestMatchers("/api/test", "/api/test/**").permitAll()
                         .requestMatchers("/api/weather").permitAll()
                         .requestMatchers("/api/weather/**").permitAll()
                         .requestMatchers("/api/weather/forecast/**").permitAll()

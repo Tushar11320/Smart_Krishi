@@ -30,6 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/",
             "/health",
             "/api/health",
+            "/api/test",
+            "/api/test/**",
             "/favicon.ico",
             "/api/auth/login",
             "/api/auth/register",

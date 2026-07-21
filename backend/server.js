@@ -30,7 +30,8 @@ app.use(cors({
     "http://127.0.0.1:5174",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:4200",
-    "https://smart-krishi-three.vercel.app"
+    "https://smart-krishi-three.vercel.app",
+    "https://smartkrishi1.netlify.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],

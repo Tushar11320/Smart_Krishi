@@ -23,6 +23,14 @@ public class HomeController {
         return response;
     }
 
+    @GetMapping("/api/test")
+    public java.util.Map<String, String> apiTest() {
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("status", "OK");
+        response.put("message", "Backend Connected");
+        return response;
+    }
+
     @GetMapping("/favicon.ico")
     public org.springframework.http.ResponseEntity<Void> returnNoFavicon() {
         return org.springframework.http.ResponseEntity.noContent().build();
