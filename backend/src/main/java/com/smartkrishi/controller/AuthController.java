@@ -2,13 +2,18 @@ package com.smartkrishi.controller;
 
 import com.smartkrishi.dto.auth.*;
 import com.smartkrishi.service.auth.AuthService;
+import com.smartkrishi.service.image.CloudinaryService;
+import com.smartkrishi.dto.image.CloudinaryResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -17,10 +22,51 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final CloudinaryService cloudinaryService;
 
-    @PostMapping("/register")
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        // Disallow binding of profileImage from request parameters to the DTO directly
+        // to prevent Spring's DataBinder from converting the MultipartFile to a String.
+        binder.setDisallowedFields("profileImage");
+    }
+
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Register a new user")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<UserResponse> register(
+            @Valid @ModelAttribute RegisterRequest request,
+            @RequestParam(value = "profileImage", required = false) MultipartFile profileImageFile
+    ) {
+        if (profileImageFile != null && !profileImageFile.isEmpty()) {
+            // Validate supported image formats (Requirement 6: JPG, JPEG, PNG, GIF, WEBP)
+            String contentType = profileImageFile.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new com.smartkrishi.exception.BadRequestException("Only image files are allowed!");
+            }
+            String filename = profileImageFile.getOriginalFilename();
+            if (filename != null) {
+                String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+                if (!ext.matches("jpg|jpeg|png|gif|webp")) {
+                    throw new com.smartkrishi.exception.BadRequestException("Supported image formats: JPG, JPEG, PNG, GIF, WEBP");
+                }
+            }
+            // Validate maximum image size (Requirement 6: 5MB)
+            if (profileImageFile.getSize() > 5 * 1024 * 1024) {
+                throw new com.smartkrishi.exception.BadRequestException("Maximum image size is 5MB");
+            }
+
+            try {
+                CloudinaryResponseDTO uploadResult = cloudinaryService.uploadImage(profileImageFile);
+                request.setProfileImage(uploadResult.getSecureUrl());
+            } catch (Exception e) {
+                throw new com.smartkrishi.exception.BadRequestException("Failed to upload profile photo to Cloudinary: " + e.getMessage());
+            }
+        } else {
+            // Default initials avatar (Requirement 8)
+            String initials = ((request.getFirstName() != null && !request.getFirstName().isEmpty() ? request.getFirstName().substring(0, 1) : "") +
+                               (request.getLastName() != null && !request.getLastName().isEmpty() ? request.getLastName().substring(0, 1) : "")).toUpperCase();
+            request.setProfileImage("https://placehold.co/150x150/16a34a/ffffff?text=" + (initials.isEmpty() ? "User" : initials));
+        }
         return new ResponseEntity<>(authService.register(request), HttpStatus.CREATED);
     }
 

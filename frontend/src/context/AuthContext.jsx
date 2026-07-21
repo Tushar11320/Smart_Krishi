@@ -102,11 +102,13 @@ export const AuthProvider = ({ children }) => {
   const register = async (signUpData) => {
     setLoading(true);
     try {
-      const response = await api.post("/auth/register", signUpData, {
-        headers: {
-          "Content-Type": signUpData instanceof FormData ? "multipart/form-data" : "application/json",
-        },
-      });
+      const headers = {};
+      if (signUpData instanceof FormData) {
+        headers["Content-Type"] = undefined;
+      } else {
+        headers["Content-Type"] = "application/json";
+      }
+      const response = await api.post("/auth/register", signUpData, { headers });
       return response.data;
     } finally {
       setLoading(false);
