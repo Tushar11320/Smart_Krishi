@@ -68,6 +68,20 @@ public class EmailServiceImpl implements EmailService {
 
         while (attempt < MAX_RETRIES) {
             attempt++;
+            
+            // Confirm SMTP connectivity before retrying
+            if (attempt > 1) {
+                log.info("[SMTP] Confirming SMTP connectivity before retry attempt {}...", attempt);
+                boolean connected = checkSmtpConnectivity();
+                if (!connected) {
+                    log.error("[SMTP] Connectivity check failed before retry. Aborting retries.");
+                    throw new BadRequestException("SMTP server became unreachable. Aborting email retry attempt " + attempt 
+                            + ". (If running on Render, verify outbound SMTP is allowed.) "
+                            + "Last error: " + getDetailedErrorMessage(lastException));
+                }
+                log.info("[SMTP] SMTP connectivity confirmed. Proceeding with retry attempt {}...", attempt);
+            }
+
             try {
                 log.info("[SMTP] Attempt {}/{} to send email to {}", attempt, MAX_RETRIES, to);
                 MimeMessage message = mailSender.createMimeMessage();
@@ -84,7 +98,7 @@ public class EmailServiceImpl implements EmailService {
                 return;
             } catch (org.springframework.mail.MailAuthenticationException e) {
                 log.error("[SMTP] Authentication failed on attempt {}: {}", attempt, e.getMessage());
-                throw new BadRequestException("SMTP Authentication failed: " + e.getMessage() + ". Please check your Google App Password / credentials.");
+                throw new BadRequestException("SMTP Authentication failed: " + getDetailedErrorMessage(e) + ". Please check your Google App Password / credentials.");
             } catch (Exception e) {
                 lastException = e;
                 log.warn("[SMTP] Error sending email on attempt {} of {}: {}", attempt, MAX_RETRIES, e.getMessage());
@@ -104,7 +118,38 @@ public class EmailServiceImpl implements EmailService {
         }
 
         log.error("[SMTP] Failed to deliver email to recipient: {} after {} attempts. Error Stack Trace: ", to, MAX_RETRIES, lastException);
-        throw new BadRequestException("Email delivery failed after " + MAX_RETRIES + " attempts. Exact SMTP error: " + lastException.getMessage());
+        throw new BadRequestException("Email delivery failed after " + MAX_RETRIES + " attempts. Exact SMTP error: " + getDetailedErrorMessage(lastException));
+    }
+
+    private boolean checkSmtpConnectivity() {
+        if (mailSender instanceof JavaMailSenderImpl) {
+            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
+            String host = impl.getHost();
+            int port = impl.getPort();
+            try (java.net.Socket socket = new java.net.Socket()) {
+                socket.connect(new java.net.InetSocketAddress(host, port), 5000);
+                return true;
+            } catch (Exception e) {
+                log.error("[SMTP Connection Check] Failed to reach SMTP server {}:{} -> {}", host, port, e.getMessage());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String getDetailedErrorMessage(Throwable e) {
+        if (e == null) return "Unknown error";
+        StringBuilder sb = new StringBuilder();
+        sb.append(e.getClass().getSimpleName()).append(": ").append(e.getMessage());
+        
+        Throwable cause = e.getCause();
+        int depth = 0;
+        while (cause != null && depth < 3) {
+            sb.append(" -> ").append(cause.getClass().getSimpleName()).append(": ").append(cause.getMessage());
+            cause = cause.getCause();
+            depth++;
+        }
+        return sb.toString();
     }
 
     private boolean isTransientException(Throwable e) {
