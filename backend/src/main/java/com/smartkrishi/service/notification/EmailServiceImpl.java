@@ -59,14 +59,7 @@ public class EmailServiceImpl implements EmailService {
                 throw new BadRequestException("SMTP credentials verification failed: Password is missing or uses a placeholder password. Please provide a valid App Password.");
             }
 
-            try {
-                log.info("[SMTP] Testing connection to SMTP host: {}, port: {}, user: {}", host, port, username);
-                impl.testConnection();
-                log.info("[SMTP] Tested connection and authenticated successfully.");
-            } catch (jakarta.mail.MessagingException e) {
-                log.error("[SMTP] Connection and authentication failed. Host: {}, Port: {}, User: {}, Error: {}", host, port, username, e.getMessage(), e);
-                throw new BadRequestException("SMTP connection failed: Unable to connect to SMTP server. Verify host, port, credentials and SSL/TLS configurations. Error: " + e.getMessage());
-            }
+            // Connection testing is bypassed here to allow transient network pings and pooled connections to be managed internally by mailSender.send().
         }
 
         // 4. Send email and handle exceptions (Requirement 4, 5, 8, 13)
