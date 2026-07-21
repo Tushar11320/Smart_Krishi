@@ -33,6 +33,16 @@ public class AuthController {
         binder.setDisallowedFields("profileImage");
     }
 
+    @GetMapping("/ping")
+    @Operation(summary = "Ping the backend")
+    public ResponseEntity<java.util.Map<String, String>> ping() {
+        log.info("[Ping] Incoming ping request");
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("status", "OK");
+        response.put("message", "pong");
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Register a new user")
     public ResponseEntity<UserResponse> register(

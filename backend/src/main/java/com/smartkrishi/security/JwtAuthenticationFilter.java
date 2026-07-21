@@ -25,6 +25,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
         String path = request.getServletPath();
         String[] excludePatterns = {
             "/",
@@ -32,6 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/health",
             "/api/test",
             "/api/test/**",
+            "/actuator/health",
+            "/actuator/**",
+            "/api/auth/ping",
             "/favicon.ico",
             "/api/auth/login",
             "/api/auth/register",
