@@ -230,8 +230,12 @@ export default function Account() {
           } else {
             msg = `Bad Request (400): ${msg}`;
           }
+        } else if (status === 401) {
+          msg = `Unauthorized (401): Authentication failed. Please verify your credentials. Details: ${msg}`;
+        } else if (status === 403) {
+          msg = `Forbidden (403): Access is denied. You do not have permission to access this resource.`;
         } else if (status === 404) {
-          msg = `Endpoint Not Found (404): The registration endpoint could not be found. Please check backend API mapping.`;
+          msg = `Endpoint Not Found (404): The requested resource could not be found. Please check backend API mapping.`;
         } else if (status >= 500) {
           msg = `Server Error (${status}): Internal backend or database error occurred. Details: ${msg}`;
         }
@@ -239,8 +243,10 @@ export default function Account() {
       } else if (err.request) {
         if (!navigator.onLine) {
           setErrorMessage("Network Failure: Your internet connection is offline. Please check your network.");
+        } else if (err.code === "ECONNABORTED" || (err.message && err.message.toLowerCase().includes("timeout"))) {
+          setErrorMessage("Timeout Error: The request to the backend server timed out. Please try again. (API URL: " + API_BASE_URL + ")");
         } else {
-          setErrorMessage("Connection Error: The backend server is unreachable. This could be due to a CORS configuration mismatch or the server being offline. (API URL: " + API_BASE_URL + ")");
+          setErrorMessage("Connection Error: The backend server is unreachable or offline. This could be due to a CORS configuration mismatch or the server being offline. (API URL: " + API_BASE_URL + ")");
         }
       } else {
         setErrorMessage(`Request Setup Error: ${err.message}`);

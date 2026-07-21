@@ -17,7 +17,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   // Prevent duplicate /api/api/... prefix if baseURL already ends with /api
-  if (config.url && config.baseURL && config.baseURL.endsWith("/api")) {
+  if (config.url && config.baseURL && (config.baseURL.endsWith("/api") || config.baseURL.endsWith("/api/"))) {
     config.url = config.url.replace(/^\/?api(\/|$)/, "/");
   }
 
