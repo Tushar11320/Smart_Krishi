@@ -1,6 +1,7 @@
 package com.smartkrishi.service.notification;
 
 import com.smartkrishi.exception.BadRequestException;
+import com.smartkrishi.exception.EmailDeliveryException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,10 +59,10 @@ public class EmailServiceImpl implements EmailService {
                     sendUsingFallback(to, subject, content);
                     return;
                 } catch (Exception ex) {
-                    throw new BadRequestException("Primary SMTP is not initialized and Fallback SMTP failed: " + getDetailedErrorMessage(ex));
+                    throw new EmailDeliveryException("Primary SMTP is not initialized and Fallback SMTP failed: " + getDetailedErrorMessage(ex));
                 }
             } else {
-                throw new BadRequestException("SMTP Mail Sender is not initialized. Please configure SMTP or enable fallback.");
+                throw new EmailDeliveryException("SMTP Mail Sender is not initialized. Please configure SMTP or enable fallback.");
             }
         }
 
@@ -78,7 +79,7 @@ public class EmailServiceImpl implements EmailService {
 
             if (password == null || password.trim().isEmpty() || password.equals("your-email-password")) {
                 log.error("[SMTP] SMTP Password is empty or uses placeholder credentials");
-                throw new BadRequestException("SMTP credentials verification failed: Password is missing or uses a placeholder password. Please provide a valid App Password.");
+                throw new EmailDeliveryException("SMTP credentials verification failed: Password is missing or uses a placeholder password. Please provide a valid App Password.");
             }
         }
 
@@ -122,7 +123,7 @@ public class EmailServiceImpl implements EmailService {
                         Thread.sleep(backoffDelay);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        throw new BadRequestException("Email sending interrupted during retry: " + ie.getMessage());
+                        throw new EmailDeliveryException("Email sending interrupted during retry: " + ie.getMessage());
                     }
                 } else {
                     break;
@@ -138,13 +139,13 @@ public class EmailServiceImpl implements EmailService {
                 return;
             } catch (Exception ex) {
                 log.error("[SMTP] Fallback email provider failed as well.", ex);
-                throw new BadRequestException("Primary SMTP failed (" + getDetailedErrorMessage(lastException) + 
+                throw new EmailDeliveryException("Primary SMTP failed (" + getDetailedErrorMessage(lastException) + 
                         ") and Fallback SMTP failed (" + getDetailedErrorMessage(ex) + ").");
             }
         }
 
         log.error("[SMTP] Failed to deliver email to recipient: {} after {} attempts. Error: ", to, MAX_RETRIES, lastException);
-        throw new BadRequestException("Email delivery failed after " + MAX_RETRIES + " attempts. Exact SMTP error: " + getDetailedErrorMessage(lastException));
+        throw new EmailDeliveryException("Email delivery failed after " + MAX_RETRIES + " attempts. Exact SMTP error: " + getDetailedErrorMessage(lastException));
     }
 
     private void sendUsingFallback(String to, String subject, String content) throws Exception {
