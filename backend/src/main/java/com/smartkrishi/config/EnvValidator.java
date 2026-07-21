@@ -27,6 +27,12 @@ public class EnvValidator {
     @Value("${spring.security.jwt.secret:}")
     private String jwtSecret;
 
+    @Value("${spring.mail.username:}")
+    private String mailUsername;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
+
     @Value("${razorpay.key-id:}")
     private String razorpayKeyId;
 
@@ -62,6 +68,8 @@ public class EnvValidator {
         checkRequired(dbUsername, "spring.datasource.username (DATABASE_USERNAME)", missingOrInvalid, "username");
         checkRequired(dbPassword, "spring.datasource.password (DATABASE_PASSWORD)", missingOrInvalid, "password");
         checkRequired(jwtSecret, "spring.security.jwt.secret (JWT_SECRET)", missingOrInvalid, "secret");
+        checkRequired(mailUsername, "spring.mail.username (MAIL_USERNAME)", missingOrInvalid, "your-email@gmail.com");
+        checkRequired(mailPassword, "spring.mail.password (MAIL_PASSWORD)", missingOrInvalid, "your-email-password");
         checkRequired(razorpayKeyId, "razorpay.key-id (RAZORPAY_KEY_ID)", missingOrInvalid, "key_id");
         checkRequired(razorpayKeySecret, "razorpay.key-secret (RAZORPAY_KEY_SECRET)", missingOrInvalid, "key_secret");
         checkRequired(razorpayWebhookSecret, "razorpay.webhook-secret (RAZORPAY_WEBHOOK_SECRET)", missingOrInvalid, "webhook_secret");

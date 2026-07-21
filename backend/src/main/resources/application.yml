@@ -66,8 +66,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:tusharbarskar8@gmail.com}
-    password: ${MAIL_PASSWORD:68A0EEC085847BB52E485ABD5CABFE231D50}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -75,6 +75,9 @@ spring:
           starttls:
             enable: true
             required: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 # Server Configuration
 server:
@@ -94,6 +97,8 @@ logging:
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.mail: DEBUG
+    org.eclipse.angus.mail: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
