@@ -7,6 +7,9 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,8 +19,20 @@ public class HomeController {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
+    @Value("${email.provider:smtp}")
+    private String activeProvider;
+
+    @Value("${email.api-key:}")
+    private String apiKey;
+
+    @Value("${email.sender-email:}")
+    private String senderEmail;
+
     @Value("${email.fallback.enabled:false}")
     private boolean fallbackEnabled;
+
+    @Value("${email.fallback.provider:smtp}")
+    private String fallbackProvider;
 
     @Value("${email.fallback.host:}")
     private String fallbackHost;
@@ -48,54 +63,67 @@ public class HomeController {
     @GetMapping("/api/health/email")
     public Map<String, Object> emailHealth() {
         Map<String, Object> response = new HashMap<>();
-        Map<String, Object> primaryStatus = new HashMap<>();
+        
+        response.put("configured_provider", activeProvider);
+        response.put("sender_email_configured", senderEmail != null && !senderEmail.isEmpty());
+        response.put("sender_email_masked", maskUsername(senderEmail));
+        response.put("api_key_configured", apiKey != null && !apiKey.isEmpty());
+
+        // DNS & TCP Connection Diagnostics for Primary SMTP (both 587 and 465)
+        Map<String, Object> smtpGmail587 = testHostConnection("smtp.gmail.com", 587);
+        Map<String, Object> smtpGmail465 = testHostConnection("smtp.gmail.com", 465);
+        
+        Map<String, Object> smtpDiag = new HashMap<>();
+        smtpDiag.put("port_587", smtpGmail587);
+        smtpDiag.put("port_465", smtpGmail465);
+        response.put("gmail_smtp_diagnostics", smtpDiag);
+
+        // DNS & TCP Connection Diagnostics for REST API Providers
+        Map<String, Object> brevoApi = testHostConnection("api.brevo.com", 443);
+        Map<String, Object> sendgridApi = testHostConnection("api.sendgrid.com", 443);
+        
+        Map<String, Object> apiDiag = new HashMap<>();
+        apiDiag.put("api_brevo_com", brevoApi);
+        apiDiag.put("api_sendgrid_com", sendgridApi);
+        response.put("rest_api_endpoints_diagnostics", apiDiag);
+
+        // Fallback Configuration & Diagnostics
         Map<String, Object> fallbackStatus = new HashMap<>();
-
-        boolean overallOk = true;
-
-        if (mailSender instanceof JavaMailSenderImpl) {
-            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
-            String host = impl.getHost();
-            int port = impl.getPort();
-            String username = impl.getUsername();
-            String password = impl.getPassword();
-
-            primaryStatus.put("host", host);
-            primaryStatus.put("port", port);
-            primaryStatus.put("configured", host != null && !host.isEmpty());
-            primaryStatus.put("username_configured", username != null && !username.isEmpty());
-            primaryStatus.put("username_masked", maskUsername(username));
-            primaryStatus.put("password_configured", password != null && !password.isEmpty());
-
-            // Test TCP socket connection to primary SMTP server
-            boolean connected = testConnection(host, port);
-            primaryStatus.put("connection_test", connected ? "SUCCESS" : "FAILED");
-            if (!connected) {
-                overallOk = false;
-            }
-        } else {
-            primaryStatus.put("status", "NOT_CONFIGURED");
-            overallOk = false;
-        }
-
         fallbackStatus.put("enabled", fallbackEnabled);
+        fallbackStatus.put("provider", fallbackProvider);
         fallbackStatus.put("host", fallbackHost);
         fallbackStatus.put("port", fallbackPort);
-        fallbackStatus.put("username_configured", fallbackUsername != null && !fallbackUsername.isEmpty());
         fallbackStatus.put("username_masked", maskUsername(fallbackUsername));
 
         if (fallbackEnabled && fallbackHost != null && !fallbackHost.isEmpty()) {
-            boolean fallbackConnected = testConnection(fallbackHost, fallbackPort);
-            fallbackStatus.put("connection_test", fallbackConnected ? "SUCCESS" : "FAILED");
-            if (fallbackConnected) {
-                // If primary failed but fallback succeeded, overall is OK
-                overallOk = true;
+            Map<String, Object> fallbackConnection = testHostConnection(fallbackHost, fallbackPort);
+            fallbackStatus.put("connection_test", fallbackConnection);
+        }
+        response.put("fallback_provider_diagnostics", fallbackStatus);
+
+        // Overall Status Determination
+        boolean emailDeliveryAvailable = false;
+        if ("brevo".equalsIgnoreCase(activeProvider)) {
+            emailDeliveryAvailable = "UP".equals(brevoApi.get("status"));
+        } else if ("sendgrid".equalsIgnoreCase(activeProvider)) {
+            emailDeliveryAvailable = "UP".equals(sendgridApi.get("status"));
+        } else { // smtp
+            emailDeliveryAvailable = "UP".equals(smtpGmail587.get("status")) || "UP".equals(smtpGmail465.get("status"));
+        }
+
+        // If primary is down but fallback is enabled and up, then overall status is UP
+        if (!emailDeliveryAvailable && fallbackEnabled) {
+            if ("brevo".equalsIgnoreCase(fallbackProvider)) {
+                emailDeliveryAvailable = "UP".equals(brevoApi.get("status"));
+            } else if ("sendgrid".equalsIgnoreCase(fallbackProvider)) {
+                emailDeliveryAvailable = "UP".equals(sendgridApi.get("status"));
+            } else if (fallbackHost != null && !fallbackHost.isEmpty()) {
+                Map<String, Object> fallbackConn = testHostConnection(fallbackHost, fallbackPort);
+                emailDeliveryAvailable = "UP".equals(fallbackConn.get("status"));
             }
         }
 
-        response.put("status", overallOk ? "UP" : "DOWN");
-        response.put("primary_provider", primaryStatus);
-        response.put("fallback_provider", fallbackStatus);
+        response.put("status", emailDeliveryAvailable ? "UP" : "DOWN");
 
         return response;
     }
@@ -120,13 +148,39 @@ public class HomeController {
         return username.substring(0, 1) + "***" + username.substring(atIndex);
     }
 
-    private boolean testConnection(String host, int port) {
-        if (host == null || host.trim().isEmpty()) return false;
-        try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress(host, port), 3000); // 3-second timeout
-            return true;
-        } catch (Exception e) {
-            return false;
+    private Map<String, Object> testHostConnection(String host, int port) {
+        Map<String, Object> result = new HashMap<>();
+        if (host == null || host.trim().isEmpty()) {
+            result.put("status", "UNCONFIGURED");
+            return result;
         }
+
+        long dnsStart = System.currentTimeMillis();
+        InetAddress address;
+        try {
+            address = InetAddress.getByName(host);
+            result.put("dns_resolution", "SUCCESS");
+            result.put("resolved_ip", address.getHostAddress());
+            result.put("dns_lookup_time_ms", System.currentTimeMillis() - dnsStart);
+        } catch (Exception e) {
+            result.put("dns_resolution", "FAILED");
+            result.put("dns_error", e.getClass().getSimpleName() + ": " + e.getMessage());
+            result.put("status", "DOWN");
+            return result;
+        }
+
+        long tcpStart = System.currentTimeMillis();
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(address, port), 4000); // 4-second timeout
+            result.put("tcp_connection", "SUCCESS");
+            result.put("tcp_connect_time_ms", System.currentTimeMillis() - tcpStart);
+            result.put("status", "UP");
+        } catch (Exception e) {
+            result.put("tcp_connection", "FAILED");
+            result.put("tcp_error", e.getClass().getSimpleName() + ": " + e.getMessage());
+            result.put("status", "DOWN");
+        }
+
+        return result;
     }
 }
