@@ -38,6 +38,7 @@ export default function Account() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [userType, setUserType] = useState("BUYER"); // BUYER or SELLER
   const [profileImage, setProfileImage] = useState("");
+  const [profileImageFile, setProfileImageFile] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // OTP Verification States
@@ -122,33 +123,32 @@ export default function Account() {
     navigate("/account");
   };
 
-  const handleProfileImageUpload = async (e) => {
+  const handleProfileImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setUploadingImage(true);
     setErrorMessage("");
     setSuccessMessage("");
-    const formData = new FormData();
-    formData.append("file", file);
 
-    try {
-      const response = await api.post("/images/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      const secureUrl = response.data?.data?.secureUrl || response.data?.secureUrl || response.data?.data || response.data;
-      setProfileImage(secureUrl);
-      setSuccessMessage("Profile photo uploaded successfully!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("Failed to upload profile photo to Cloudinary.");
-    } finally {
-      setUploadingImage(false);
+    // Client-side image validation (Requirement 6)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMessage("Supported image formats: JPG, JPEG, PNG, GIF, WEBP.");
+      return;
     }
+    const maxSize = 5 * 1024 * 1024; // 5MB limit
+    if (file.size > maxSize) {
+      setErrorMessage("Maximum image size is 5MB.");
+      return;
+    }
+
+    setProfileImageFile(file);
+    // Generate a temporary local URL for previewing the selected image
+    setProfileImage(URL.createObjectURL(file));
   };
 
   const handleRemoveProfileImage = () => {
+    setProfileImageFile(null);
     setProfileImage("");
   };
 
@@ -170,16 +170,42 @@ export default function Account() {
           return;
         }
 
-        await register({
-          firstName,
-          lastName,
-          email,
-          phone: String(phone).trim(),
-          password,
-          confirmPassword,
-          userType,
-          profileImage
-        });
+        // Client-side validations (Requirement 6)
+        const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/;
+        if (!emailRegex.test(email)) {
+          setErrorMessage("Please enter a valid email address.");
+          setLoading(false);
+          return;
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#%^()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d@$!%*?&#%^()_+\-=\[\]{};':"\\|,.<>\/?]{8,}$/;
+        if (!passwordRegex.test(password)) {
+          setErrorMessage("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+          setLoading(false);
+          return;
+        }
+
+        const phoneRegex = /^\+?[0-9]{10,15}$/;
+        if (!phoneRegex.test(phone)) {
+          setErrorMessage("Please enter a valid phone number (10-15 digits).");
+          setLoading(false);
+          return;
+        }
+
+        // Construct FormData for multipart upload during registration
+        const formData = new FormData();
+        formData.append("firstName", firstName);
+        formData.append("lastName", lastName);
+        formData.append("email", email);
+        formData.append("phone", String(phone).trim());
+        formData.append("password", password);
+        formData.append("confirmPassword", confirmPassword);
+        formData.append("userType", userType);
+        if (profileImageFile) {
+          formData.append("profileImage", profileImageFile);
+        }
+
+        await register(formData);
 
         // Registration successful: switch to OTP screen
         setOtpEmail(email);

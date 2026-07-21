@@ -1,10 +1,13 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadDir)) {
+// Vercel has read-only filesystem except for /tmp.
+const isVercel = process.env.VERCEL || process.env.NOW_BUILDER;
+const uploadDir = isVercel ? os.tmpdir() : path.join(__dirname, "../uploads");
+
+if (!isVercel && !fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
@@ -19,10 +22,14 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/")) {
+  const allowedExtensions = /jpeg|jpg|png|gif|webp/;
+  const mimetype = allowedExtensions.test(file.mimetype);
+  const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+
+  if (mimetype && extname) {
     cb(null, true);
   } else {
-    cb(new Error("Only images are allowed!"), false);
+    cb(new Error("Only images of format JPG, JPEG, PNG, GIF, or WEBP are allowed!"), false);
   }
 };
 

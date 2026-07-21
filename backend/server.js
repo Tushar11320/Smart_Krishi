@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const multer = require("multer");
 
 const connectDB = require("./config/db");
 const { verifySmtpConnection, transporter } = require("./config/nodemailer");
@@ -59,11 +60,10 @@ app.post("/api/test-email", async (req, res) => {
       response: info.response
     });
   } catch (error) {
-    console.error("[DIAGNOSTICS] SMTP diagnostics test connection failed:", error);
+    console.error("[DIAGNOSTICS] SMTP diagnostics test connection failed:", error.stack || error);
     res.status(500).json({
       success: false,
       message: "SMTP test connection failed: " + error.message,
-      error: error.stack
     });
   }
 });
@@ -77,8 +77,26 @@ app.use("/api/tents", require("./routes/tentRoutes"));
 app.use("/api/weather", require("./routes/weatherRoutes"));
 app.use("/api/fertilizers",require("./routes/fertilizerRoutes"));
 app.use("/api/market", require("./routes/marketRoutes"));
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/images", require("./routes/imageRoutes"));
+
 app.get("/", (req, res) => {
   res.send("Smart Krishi Backend Running");
+});
+
+// Global error handling middleware (Never leak sensitive error.stack to client)
+app.use((err, req, res, next) => {
+  console.error("[GLOBAL ERROR INTERCEPTOR] Error Details:", err.stack || err);
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: `File upload error: ${err.message}`,
+    });
+  }
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error occurred",
+  });
 });
 
 const PORT = process.env.PORT || 5000;
