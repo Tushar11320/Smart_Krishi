@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/auth")
 @AllArgsConstructor
+@Slf4j
 @Tag(name = "Authentication", description = "APIs for user authentication")
 public class AuthController {
 
@@ -37,37 +39,49 @@ public class AuthController {
             @Valid @ModelAttribute RegisterRequest request,
             @RequestParam(value = "profileImage", required = false) MultipartFile profileImageFile
     ) {
-        if (profileImageFile != null && !profileImageFile.isEmpty()) {
-            // Validate supported image formats (Requirement 6: JPG, JPEG, PNG, GIF, WEBP)
-            String contentType = profileImageFile.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                throw new com.smartkrishi.exception.BadRequestException("Only image files are allowed!");
-            }
-            String filename = profileImageFile.getOriginalFilename();
-            if (filename != null) {
-                String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
-                if (!ext.matches("jpg|jpeg|png|gif|webp")) {
-                    throw new com.smartkrishi.exception.BadRequestException("Supported image formats: JPG, JPEG, PNG, GIF, WEBP");
-                }
-            }
-            // Validate maximum image size (Requirement 6: 5MB)
-            if (profileImageFile.getSize() > 5 * 1024 * 1024) {
-                throw new com.smartkrishi.exception.BadRequestException("Maximum image size is 5MB");
-            }
+        log.info("[Register Request] Incoming registration request: email={}, firstName={}, lastName={}, phone={}, userType={}, profileImagePresent={}",
+                request.getEmail(), request.getFirstName(), request.getLastName(), request.getPhone(), request.getUserType(), (profileImageFile != null && !profileImageFile.isEmpty()));
 
-            try {
-                CloudinaryResponseDTO uploadResult = cloudinaryService.uploadImage(profileImageFile);
-                request.setProfileImage(uploadResult.getSecureUrl());
-            } catch (Exception e) {
-                throw new com.smartkrishi.exception.BadRequestException("Failed to upload profile photo to Cloudinary: " + e.getMessage());
+        try {
+            if (profileImageFile != null && !profileImageFile.isEmpty()) {
+                // Validate supported image formats (Requirement 6: JPG, JPEG, PNG, GIF, WEBP)
+                String contentType = profileImageFile.getContentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    throw new com.smartkrishi.exception.BadRequestException("Only image files are allowed!");
+                }
+                String filename = profileImageFile.getOriginalFilename();
+                if (filename != null) {
+                    String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+                    if (!ext.matches("jpg|jpeg|png|gif|webp")) {
+                        throw new com.smartkrishi.exception.BadRequestException("Supported image formats: JPG, JPEG, PNG, GIF, WEBP");
+                    }
+                }
+                // Validate maximum image size (Requirement 6: 5MB)
+                if (profileImageFile.getSize() > 5 * 1024 * 1024) {
+                    throw new com.smartkrishi.exception.BadRequestException("Maximum image size is 5MB");
+                }
+
+                try {
+                    CloudinaryResponseDTO uploadResult = cloudinaryService.uploadImage(profileImageFile);
+                    request.setProfileImage(uploadResult.getSecureUrl());
+                } catch (Exception e) {
+                    throw new com.smartkrishi.exception.BadRequestException("Failed to upload profile photo to Cloudinary: " + e.getMessage());
+                }
+            } else {
+                // Default initials avatar (Requirement 8)
+                String initials = ((request.getFirstName() != null && !request.getFirstName().isEmpty() ? request.getFirstName().substring(0, 1) : "") +
+                                   (request.getLastName() != null && !request.getLastName().isEmpty() ? request.getLastName().substring(0, 1) : "")).toUpperCase();
+                request.setProfileImage("https://placehold.co/150x150/16a34a/ffffff?text=" + (initials.isEmpty() ? "User" : initials));
             }
-        } else {
-            // Default initials avatar (Requirement 8)
-            String initials = ((request.getFirstName() != null && !request.getFirstName().isEmpty() ? request.getFirstName().substring(0, 1) : "") +
-                               (request.getLastName() != null && !request.getLastName().isEmpty() ? request.getLastName().substring(0, 1) : "")).toUpperCase();
-            request.setProfileImage("https://placehold.co/150x150/16a34a/ffffff?text=" + (initials.isEmpty() ? "User" : initials));
+            
+            log.info("[Register Request] Executing registration service for: {}", request.getEmail());
+            UserResponse response = authService.register(request);
+            log.info("[Register Request] User registered successfully: {}", request.getEmail());
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("[Register Request ERROR] Registration failed for user: {}. Full stack trace: ", request.getEmail(), e);
+            throw e;
         }
-        return new ResponseEntity<>(authService.register(request), HttpStatus.CREATED);
     }
 
     @PostMapping("/login")

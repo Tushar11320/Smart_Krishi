@@ -75,9 +75,9 @@ spring:
           starttls:
             enable: true
             required: true
-          connectiontimeout: 30000
-          timeout: 30000
-          writetimeout: 30000
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 # Server Configuration
 server:
