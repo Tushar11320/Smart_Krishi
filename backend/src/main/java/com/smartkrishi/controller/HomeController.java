@@ -16,6 +16,13 @@ public class HomeController {
         return "OK";
     }
 
+    @GetMapping("/api/health")
+    public java.util.Map<String, String> apiHealth() {
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("status", "ok");
+        return response;
+    }
+
     @GetMapping("/favicon.ico")
     public org.springframework.http.ResponseEntity<Void> returnNoFavicon() {
         return org.springframework.http.ResponseEntity.noContent().build();

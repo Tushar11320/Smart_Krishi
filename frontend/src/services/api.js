@@ -16,8 +16,8 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   // Prevent duplicate /api/api/... prefix if baseURL already ends with /api
-  if (config.url && config.url.startsWith("/api/") && config.baseURL && config.baseURL.endsWith("/api")) {
-    config.url = config.url.replace(/^\/api/, "");
+  if (config.url && config.baseURL && config.baseURL.endsWith("/api")) {
+    config.url = config.url.replace(/^\/?api\/?/, "/");
   }
 
   const token = localStorage.getItem("token");

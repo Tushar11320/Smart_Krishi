@@ -64,19 +64,22 @@ public class EnvValidator {
         log.info("Active profile is 'prod'. Executing strict production environment variable checks...");
         List<String> missingOrInvalid = new ArrayList<>();
 
+        // Critical configurations - Missing values will crash the application
         checkRequired(dbUrl, "spring.datasource.url (DATABASE_URL)", missingOrInvalid, "jdbc:mysql");
         checkRequired(dbUsername, "spring.datasource.username (DATABASE_USERNAME)", missingOrInvalid, "username");
         checkRequired(dbPassword, "spring.datasource.password (DATABASE_PASSWORD)", missingOrInvalid, "password");
         checkRequired(jwtSecret, "spring.security.jwt.secret (JWT_SECRET)", missingOrInvalid, "secret");
-        checkRequired(mailUsername, "spring.mail.username (MAIL_USERNAME)", missingOrInvalid, "your-email@gmail.com");
-        checkRequired(mailPassword, "spring.mail.password (MAIL_PASSWORD)", missingOrInvalid, "your-email-password");
-        checkRequired(razorpayKeyId, "razorpay.key-id (RAZORPAY_KEY_ID)", missingOrInvalid, "key_id");
-        checkRequired(razorpayKeySecret, "razorpay.key-secret (RAZORPAY_KEY_SECRET)", missingOrInvalid, "key_secret");
-        checkRequired(razorpayWebhookSecret, "razorpay.webhook-secret (RAZORPAY_WEBHOOK_SECRET)", missingOrInvalid, "webhook_secret");
-        checkRequired(weatherApiKey, "openweather.api-key (OPENWEATHER_API_KEY)", missingOrInvalid, "api_key");
-        checkRequired(cloudinaryCloudName, "cloudinary.cloud-name (CLOUDINARY_CLOUD_NAME)", missingOrInvalid, "cloud_name");
-        checkRequired(cloudinaryApiKey, "cloudinary.api-key (CLOUDINARY_API_KEY)", missingOrInvalid, "api_key");
-        checkRequired(cloudinaryApiSecret, "cloudinary.api-secret (CLOUDINARY_API_SECRET)", missingOrInvalid, "api_secret");
+
+        // Optional configurations - Missing values will log warnings but allow startup
+        checkOptional(mailUsername, "spring.mail.username (MAIL_USERNAME)", "your-email@gmail.com");
+        checkOptional(mailPassword, "spring.mail.password (MAIL_PASSWORD)", "your-email-password");
+        checkOptional(razorpayKeyId, "razorpay.key-id (RAZORPAY_KEY_ID)", "key_id");
+        checkOptional(razorpayKeySecret, "razorpay.key-secret (RAZORPAY_KEY_SECRET)", "key_secret");
+        checkOptional(razorpayWebhookSecret, "razorpay.webhook-secret (RAZORPAY_WEBHOOK_SECRET)", "webhook_secret");
+        checkOptional(weatherApiKey, "openweather.api-key (OPENWEATHER_API_KEY)", "api_key");
+        checkOptional(cloudinaryCloudName, "cloudinary.cloud-name (CLOUDINARY_CLOUD_NAME)", "cloud_name");
+        checkOptional(cloudinaryApiKey, "cloudinary.api-key (CLOUDINARY_API_KEY)", "api_key");
+        checkOptional(cloudinaryApiSecret, "cloudinary.api-secret (CLOUDINARY_API_SECRET)", "api_secret");
 
         if (!missingOrInvalid.isEmpty()) {
             log.error("=========================================================================");
@@ -99,6 +102,17 @@ public class EnvValidator {
         String valLower = value.trim().toLowerCase();
         if (valLower.contains("your-") || valLower.contains("your_") || valLower.contains("demo-") || valLower.equals(placeholderPattern.toLowerCase())) {
             errors.add(keyName + " contains an invalid default placeholder value: '" + value + "'");
+        }
+    }
+
+    private void checkOptional(String value, String keyName, String placeholderPattern) {
+        if (value == null || value.trim().isEmpty()) {
+            log.warn("[ENV CONFIG WARNING] Optional configuration {} is missing or empty.", keyName);
+            return;
+        }
+        String valLower = value.trim().toLowerCase();
+        if (valLower.contains("your-") || valLower.contains("your_") || valLower.contains("demo-") || valLower.equals(placeholderPattern.toLowerCase())) {
+            log.warn("[ENV CONFIG WARNING] Optional configuration {} contains an invalid default placeholder value: '{}'", keyName, value);
         }
     }
 }
