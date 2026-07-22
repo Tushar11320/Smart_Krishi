@@ -11,8 +11,8 @@ public class WeatherConfig {
     @Bean
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000); // 10 seconds
-        factory.setReadTimeout(10000);    // 10 seconds
+        factory.setConnectTimeout(3000); // 3 seconds connect timeout
+        factory.setReadTimeout(5000);    // 5 seconds read timeout
         return new RestTemplate(factory);
     }
 }

@@ -15,9 +15,9 @@ public class AsyncConfig {
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
+        executor.setMaxPoolSize(20);
         executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("smart-krishi-async-");
+        executor.setThreadNamePrefix("SmartKrishiAsync-");
         executor.initialize();
         return executor;
     }

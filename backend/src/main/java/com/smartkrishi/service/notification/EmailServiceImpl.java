@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -31,17 +32,22 @@ public class EmailServiceImpl implements EmailService {
     private static final long INITIAL_RETRY_DELAY_MS = 2000;
 
     @Override
+    @Async("taskExecutor")
     public void sendEmail(String to, String subject, String content) {
-        log.info("[EmailService] Initiating email sending to: {}, Subject: {}", to, subject);
+        log.info("[EmailService Async] Initiating async email sending to: {}, Subject: {}", to, subject);
 
         // 1. Validate recipient email address format
         if (to == null || !to.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
             log.error("[EmailService] Email address validation failed for recipient: {}", to);
-            throw new BadRequestException("Please enter a valid email address.");
+            return;
         }
 
         // 2. Dispatch email via Gmail SMTP with retry logic
-        sendViaSmtpWithRetry(to, subject, content);
+        try {
+            sendViaSmtpWithRetry(to, subject, content);
+        } catch (Exception e) {
+            log.error("[EmailService Async ERROR] Asynchronous email delivery failed for recipient {}: {}", to, e.getMessage());
+        }
     }
 
     private void sendViaSmtpWithRetry(String to, String subject, String content) {

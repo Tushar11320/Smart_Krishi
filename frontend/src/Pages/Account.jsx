@@ -230,8 +230,10 @@ export default function Account() {
           } else {
             msg = `Bad Request (400): ${msg}`;
           }
+        } else if (status === 503) {
+          msg = `Service Unavailable (503): ${msg}`;
         } else if (status === 401) {
-          msg = `Unauthorized (401): Authentication failed. Please verify your credentials. Details: ${msg}`;
+          msg = `Unauthorized (401): Authentication failed. Details: ${msg}`;
         } else if (status === 403) {
           msg = `Forbidden (403): Access is denied. You do not have permission to access this resource.`;
         } else if (status === 404) {
