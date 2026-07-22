@@ -23,7 +23,7 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     private String email;
     
-    @Pattern(regexp = "^(?:\\+91)?[6-9]\\d{9}$", message = "Please enter a valid Indian phone number.")
+    @Pattern(regexp = "^(?:\\+91|\\+)?\\d{10,15}$", message = "Please enter a valid phone number (10-15 digits).")
     @NotBlank(message = "Phone is required")
     private String phone;
 

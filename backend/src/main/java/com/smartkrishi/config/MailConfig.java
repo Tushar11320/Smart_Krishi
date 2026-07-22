@@ -13,10 +13,10 @@ import java.util.Properties;
 @Slf4j
 public class MailConfig {
 
-    @Value("${spring.mail.host}")
+    @Value("${spring.mail.host:smtp.gmail.com}")
     private String host;
 
-    @Value("${spring.mail.port}")
+    @Value("${spring.mail.port:587}")
     private int port;
 
     @Value("${spring.mail.username:}")
@@ -46,10 +46,15 @@ public class MailConfig {
     @Bean
     public JavaMailSender javaMailSender() {
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-        mailSender.setHost(host);
-        mailSender.setPort(port);
-        mailSender.setUsername(username);
-        mailSender.setPassword(password);
+        mailSender.setHost(host != null && !host.isBlank() ? host : "smtp.gmail.com");
+        mailSender.setPort(port > 0 ? port : 587);
+
+        // Sanitize credentials: trim spaces and strip internal whitespace from App Password if present
+        String cleanUsername = (username != null) ? username.trim() : "";
+        String cleanPassword = (password != null) ? password.trim().replaceAll("\\s+", "") : "";
+
+        mailSender.setUsername(cleanUsername);
+        mailSender.setPassword(cleanPassword);
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -59,18 +64,17 @@ public class MailConfig {
         props.put("mail.smtp.connectiontimeout", String.valueOf(connectionTimeout));
         props.put("mail.smtp.timeout", String.valueOf(timeout));
         props.put("mail.smtp.writetimeout", String.valueOf(writeTimeout));
+        props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
+        props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
         props.put("mail.debug", "true");
 
-        // For Gmail specifically, TLSv1.2 or TLSv1.3 is recommended
-        props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
-
-        String maskedPassword = (password != null && !password.isEmpty()) 
-                ? "*".repeat(Math.min(password.length(), 8)) + " (length: " + password.length() + ")" 
-                : "null";
+        String maskedPassword = (!cleanPassword.isEmpty()) 
+                ? "*".repeat(Math.min(cleanPassword.length(), 8)) + " (length: " + cleanPassword.length() + ")" 
+                : "null/empty";
 
         log.info("[MailConfig] Initializing JavaMailSender with Host: {}, Port: {}, Username: {}, Password: {}", 
-                 host, port, username, maskedPassword);
-        
+                 mailSender.getHost(), mailSender.getPort(), cleanUsername, maskedPassword);
+
         return mailSender;
     }
 }

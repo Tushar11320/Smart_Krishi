@@ -43,7 +43,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/register")
     @Operation(summary = "Register a new user")
     public ResponseEntity<UserResponse> register(
             @Valid @ModelAttribute RegisterRequest request,

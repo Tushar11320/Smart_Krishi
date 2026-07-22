@@ -64,10 +64,10 @@ spring:
 
   # Email Configuration
   mail:
-    host: ${SPRING_MAIL_HOST:${MAIL_HOST:smtp.gmail.com}}
-    port: ${SPRING_MAIL_PORT:${MAIL_PORT:587}}
-    username: ${SPRING_MAIL_USERNAME:${MAIL_USERNAME:}}
-    password: ${SPRING_MAIL_PASSWORD:${MAIL_PASSWORD:}}
+    host: ${MAIL_HOST:${SPRING_MAIL_HOST:${EMAIL_HOST:smtp.gmail.com}}}
+    port: ${MAIL_PORT:${SPRING_MAIL_PORT:${EMAIL_PORT:587}}}
+    username: ${MAIL_USERNAME:${EMAIL_USER:${SPRING_MAIL_USERNAME:}}}
+    password: ${MAIL_PASSWORD:${EMAIL_PASSWORD:${SPRING_MAIL_PASSWORD:}}}
     properties:
       mail:
         smtp:
@@ -78,20 +78,16 @@ spring:
           connectiontimeout: 30000
           timeout: 30000
           writetimeout: 30000
+          ssl:
+            trust: smtp.gmail.com
+            protocols: TLSv1.2 TLSv1.3
 
 # Email Service Provider Configuration
 email:
-  provider: ${EMAIL_PROVIDER:smtp}      # smtp, brevo, sendgrid
-  api-key: ${EMAIL_API_KEY:}            # API key for Brevo or SendGrid
-  sender-email: ${EMAIL_SENDER_EMAIL:${SPRING_MAIL_USERNAME:}}
+  provider: ${EMAIL_PROVIDER:smtp}      # smtp
+  api-key: ${EMAIL_API_KEY:}
+  sender-email: ${MAIL_USERNAME:${EMAIL_USER:${SPRING_MAIL_USERNAME:tusharbarskar8@gmail.com}}}
   sender-name: ${EMAIL_SENDER_NAME:Smart Krishi}
-  fallback:
-    enabled: ${EMAIL_FALLBACK_ENABLED:false}
-    provider: ${EMAIL_FALLBACK_PROVIDER:smtp} # smtp, brevo, sendgrid
-    host: ${EMAIL_FALLBACK_HOST:}
-    port: ${EMAIL_FALLBACK_PORT:587}
-    username: ${EMAIL_FALLBACK_USERNAME:}
-    password: ${EMAIL_FALLBACK_PASSWORD:}
 
 # Server Configuration
 server:

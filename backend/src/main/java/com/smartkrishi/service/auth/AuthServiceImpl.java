@@ -108,6 +108,13 @@ public class AuthServiceImpl implements AuthService {
         }
         
         user.setRoles(roles);
+
+        // Send OTP verification email FIRST before saving user to database.
+        // If email sending fails, the method throws an exception and the @Transactional
+        // annotation rolls back any database operations, ensuring no unverified or orphan user is saved.
+        sendVerificationEmail(user.getEmail(), otp);
+
+        // Save user to database ONLY after OTP is generated and email is sent successfully
         User savedUser = userRepository.save(user);
 
         // Create profile based on user type
@@ -124,10 +131,7 @@ public class AuthServiceImpl implements AuthService {
             buyerProfileRepository.save(buyerProfile);
         }
 
-        // Send OTP email
-        sendVerificationEmail(savedUser.getEmail(), otp);
-
-        log.info("New user registered and verification email sent: {}", savedUser.getEmail());
+        log.info("New user registered and verification email sent successfully: {}", savedUser.getEmail());
 
         return mapUserToResponse(savedUser);
     }

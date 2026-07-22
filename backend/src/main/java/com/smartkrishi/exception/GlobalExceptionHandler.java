@@ -62,15 +62,31 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(EmailDeliveryException.class)
-    public ResponseEntity<ErrorResponse> handleEmailDeliveryException(
-            EmailDeliveryException ex, WebRequest request) {
-        log.error("Email delivery failed: {}", ex.getMessage());
+    /**
+     * Requirement 7: Explicitly handle MailSendException, SocketTimeoutException, MessagingException, and EmailDeliveryException.
+     * Returns structured JSON with status 503 (Service Unavailable).
+     */
+    @ExceptionHandler({
+            EmailDeliveryException.class,
+            org.springframework.mail.MailSendException.class,
+            org.springframework.mail.MailException.class,
+            java.net.SocketTimeoutException.class,
+            jakarta.mail.MessagingException.class
+    })
+    public ResponseEntity<ErrorResponse> handleEmailDeliveryExceptions(
+            Exception ex, WebRequest request) {
+        log.error("[GlobalExceptionHandler] Email delivery failed: {}", ex.getMessage(), ex);
+
+        String userMessage = "Failed to send verification email. Connection to SMTP server timed out or failed. Please try again later.";
+        if (ex.getMessage() != null && !ex.getMessage().isBlank()) {
+            userMessage = "Failed to send verification email: " + ex.getMessage();
+        }
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.SERVICE_UNAVAILABLE.value())
                 .error("Service Unavailable")
-                .message(ex.getMessage())
+                .message(userMessage)
                 .path(request.getDescription(false).replace("uri=", ""))
                 .build();
 
@@ -83,12 +99,12 @@ public class GlobalExceptionHandler {
         log.warn("Validation failed for request");
         Map<String, String> fieldErrors = new HashMap<>();
         boolean hasPhoneError = false;
-        
+
         for (org.springframework.validation.ObjectError error : ex.getBindingResult().getAllErrors()) {
             String fieldName = error instanceof FieldError ? ((FieldError) error).getField() : error.getObjectName();
             String errorMessage = error.getDefaultMessage();
             fieldErrors.put(fieldName, errorMessage);
-            if ("phone".equals(fieldName) || "Please enter a valid Indian phone number.".equals(errorMessage)) {
+            if ("phone".equals(fieldName) || (errorMessage != null && errorMessage.contains("phone"))) {
                 hasPhoneError = true;
             }
         }
@@ -96,7 +112,7 @@ public class GlobalExceptionHandler {
         if (hasPhoneError) {
             Map<String, Object> body = new HashMap<>();
             body.put("success", false);
-            body.put("message", "Please enter a valid Indian phone number.");
+            body.put("message", "Please enter a valid phone number.");
             return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
         }
 
@@ -116,15 +132,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleConstraintViolation(
             jakarta.validation.ConstraintViolationException ex, WebRequest request) {
         log.warn("Constraint violation: {}", ex.getMessage());
-        Map<String, String> fieldErrors = new java.util.HashMap<>();
+        Map<String, String> fieldErrors = new HashMap<>();
         boolean hasPhoneError = false;
-        
+
         for (jakarta.validation.ConstraintViolation<?> violation : ex.getConstraintViolations()) {
             String propertyPath = violation.getPropertyPath().toString();
             String field = propertyPath.substring(propertyPath.lastIndexOf('.') + 1);
             String errorMessage = violation.getMessage();
             fieldErrors.put(field, errorMessage);
-            if ("phone".equals(field) || "Please enter a valid Indian phone number.".equals(errorMessage)) {
+            if ("phone".equals(field) || (errorMessage != null && errorMessage.contains("phone"))) {
                 hasPhoneError = true;
             }
         }
@@ -132,7 +148,7 @@ public class GlobalExceptionHandler {
         if (hasPhoneError) {
             Map<String, Object> body = new HashMap<>();
             body.put("success", false);
-            body.put("message", "Please enter a valid Indian phone number.");
+            body.put("message", "Please enter a valid phone number.");
             return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
         }
 
@@ -175,6 +191,7 @@ public class GlobalExceptionHandler {
                 .build();
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
+
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
             org.springframework.web.servlet.resource.NoResourceFoundException ex, WebRequest request) {
