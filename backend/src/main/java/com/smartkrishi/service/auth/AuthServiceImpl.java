@@ -476,14 +476,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void sendVerificationEmail(String toEmail, String otp) {
-        String subject = "Smart Krishi - Verification Code";
-        String content = "<h2>Welcome to Smart Krishi!</h2>"
-                + "<p>Thank you for registering with us. To activate your account, please verify your email address using the following 6-digit OTP:</p>"
-                + "<h3 style='background-color:#f4f4f4;padding:12px;display:inline-block;letter-spacing:5px;font-size:24px;border-radius:5px;color:#16a34a;'>" + otp + "</h3>"
-                + "<p>This code is valid for <strong>10 minutes</strong>. If you did not request this code, please ignore this email.</p>"
-                + "<br/><p>Grow Smart, Live Better!</p><p>Smart Krishi Team</p>";
+        try {
+            String subject = "Smart Krishi - Verification Code";
+            String content = "<h2>Welcome to Smart Krishi!</h2>"
+                    + "<p>Thank you for registering with us. To activate your account, please verify your email address using the following 6-digit OTP:</p>"
+                    + "<h3 style='background-color:#f4f4f4;padding:12px;display:inline-block;letter-spacing:5px;font-size:24px;border-radius:5px;color:#16a34a;'>" + otp + "</h3>"
+                    + "<p>This code is valid for <strong>10 minutes</strong>. If you did not request this code, please ignore this email.</p>"
+                    + "<br/><p>Grow Smart, Live Better!</p><p>Smart Krishi Team</p>";
 
-        emailService.sendEmail(toEmail, subject, content);
+            emailService.sendEmail(toEmail, subject, content);
+        } catch (Exception e) {
+            log.error("[AuthService] Failed to queue verification email for recipient {}: {}", toEmail, e.getMessage(), e);
+        }
     }
 
     private GoogleTokenPayload validateGoogleToken(String tokenString) {

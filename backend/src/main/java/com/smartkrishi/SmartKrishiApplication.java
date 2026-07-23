@@ -8,12 +8,14 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableScheduling
+@EnableAsync
 public class SmartKrishiApplication {
 
     public static void main(String[] args) {
